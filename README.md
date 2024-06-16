@@ -10,7 +10,7 @@ A simple FastAPI application providing basic endpoints to manage products and or
 
 **Key Features:**
 - FastAPI for building the API
-- In-memory storage
+- PostgreSQL for data persistence
 
 **Setup:**
 ```sh
@@ -25,6 +25,7 @@ Extends the basic mart application by integrating PostgreSQL for persistent data
 **Key Features:**
 - FastAPI
 - PostgreSQL for data persistence
+- Add some additional route
 
 **Setup:**
 ```sh
