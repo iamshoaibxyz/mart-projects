@@ -7,6 +7,7 @@ services:
     container_name: productContainer
     profiles:
       - abc
+      - all
     ports:
       - "8000:8000"
     volumes:
@@ -24,6 +25,7 @@ services:
     container_name: orderContainer
     profiles:
       - abc
+      - all
     ports:
       - "8004:8004"
     volumes:
@@ -41,6 +43,7 @@ services:
     container_name: inventoryContainer
     profiles:
       - abc
+      - all
       - inventory
     ports:
       - "8004:8004"
@@ -59,6 +62,7 @@ services:
     container_name: authContainer
     profiles:
       - abc
+      - all
       - auth
     ports:
       - "8001:8001"
@@ -77,6 +81,7 @@ services:
     container_name: emailContainer
     profiles:
       - abc
+      - all
       - auth
     ports:
       - "8002:8002"
@@ -95,6 +100,7 @@ services:
     container_name: paymentContainer
     profiles:
       - abc
+      - all
     ports:
       - "8003:8003"
     volumes:
@@ -202,7 +208,7 @@ services:
     image: provectuslabs/kafka-ui
     container_name: kafka-ui2
     profiles:
-      - alls
+      - all
       - auth
     ports:
       - "8081:8080"

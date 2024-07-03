@@ -32,6 +32,11 @@ class UserReq(BaseModel):
     password: str
     email: EmailStr
 
+class VerifyResetPasswordUserReq(BaseModel):
+    token: str
+    email: EmailStr
+    new_password: str
+
 class UserRes(BaseModel):
     first_name: str
     last_name: str

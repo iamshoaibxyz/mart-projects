@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package email;
+
+message Email {
+    string id = 1;
+    string recipient_email = 2;
+    string subject = 3;
+    string sent_at = 4;
+    string status = 5;
+}

@@ -2,7 +2,7 @@ import resend
 from typing import Dict
 from fastapi import FastAPI
 from app.config.database import lifespan
-from app.config.settings import RESEND_API_Key
+# from app.config.settings import RESEND_API_Key
 
 # resend.api_key = "re_123456789"
 

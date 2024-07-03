@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from aiokafka import AIOKafkaConsumer
 from app.schemas.protobuf import user_pb2, user_token_pb2, company_pb2, company_token_pb2
-from app.services.kafka.handle_topics import register_new_user, verify_new_user, user_token, register_new_company, verify_new_company, company_token
+from app.services.kafka.handle_topics import verify_reset_password_user, register_new_user, verify_new_user, user_token, register_new_company, verify_new_company, company_token
 
 @asynccontextmanager
 async def get_consumer(topic: str):
@@ -32,6 +32,11 @@ async def kafka_consumer(topic: str):
                 user_token_proto = user_pb2.UserToken()
                 user_token_proto.ParseFromString(message.value)
                 await user_token(user_token_proto)
+
+            elif topic == "verify-reset-password-user-topic":
+                user_token_proto = user_pb2.User()
+                user_token_proto.ParseFromString(message.value)
+                await verify_reset_password_user(user_token_proto)
 
             elif topic == "register-new-company-topic":
                 company_proto = company_pb2.Company()

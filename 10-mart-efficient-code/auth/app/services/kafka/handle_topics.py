@@ -24,7 +24,7 @@ async def register_new_user(user_proto):
     # send to kafka and then email-service will be recived
     async with get_producer() as producer:
         proto_user = user_to_proto(new_user)
-        await producer.send_and_wait("send-email-to-new-user-topic", proto_user.SerializeToString())
+        await producer.send_and_wait("email-to-new-user-topic", proto_user.SerializeToString())
 
 async def verify_new_user(user_proto):
     user_model = proto_to_usermodel(user_proto)
@@ -39,7 +39,7 @@ async def verify_new_user(user_proto):
     # send to kafka and then email-service will be recived
     async with get_producer() as producer:
         proto_user = user_to_proto(user)
-        await producer.send_and_wait("send-email-to-new-verify-user-topic", proto_user.SerializeToString())
+        await producer.send_and_wait("email-to-new-verified-user-topic", proto_user.SerializeToString())
 
 async def user_token(proto_user_token):
     user_token: UserTokenModel = proto_to_user_token(proto_user_token)
@@ -49,6 +49,23 @@ async def user_token(proto_user_token):
         session.add(user)
         session.commit()
         session.refresh(user)
+        
+
+async def verify_reset_password_user(proto_user):
+    user_model: UserModel = proto_to_usermodel(proto_user)
+    async with get_session() as session:
+        user: UserModel = session.get(UserModel, user_model.id)
+        user.password = user_model.password
+        user.updated_at = user_model.updated_at
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    async with get_producer() as producer:
+        user_proto = user_to_proto(user)
+        await producer.send_and_wait("email-verify-reset-password-user-topic", user_proto.SerializeToString())
+        
+
+
 async def register_new_company(company_proto):
     new_company = proto_to_company(company_proto)
     async with get_session() as session:

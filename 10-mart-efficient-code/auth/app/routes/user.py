@@ -1,7 +1,7 @@
 from uuid import UUID
 from app.config.security import hashed_password, verify_hashed_password, hashed_url, verify_hashed_url, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from app.schemas.user import UserReq, UserAccountVerifyReq, UserToken
+from app.schemas.user import UserReq, UserAccountVerifyReq, UserToken, VerifyResetPasswordUserReq
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.config.validation import validate_password
 from datetime import datetime, timedelta, timezone
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/user", tags=["User Auth"], responses={404: {"descrip
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/user-login")
 
 from app.schemas.user import UserSchema
-
+ 
 @router.post("/register")
 async def create_user(user: UserReq, session: Annotated[Session, Depends(get_session)]):
     user_exist = session.exec(select(UserModel).where(UserModel.email == user.email)).first()
@@ -29,6 +29,9 @@ async def create_user(user: UserReq, session: Annotated[Session, Depends(get_ses
         if user_exist.is_verified:
             return {"message": f"user '{user.email}' email is already registed and verified, please visit to login"}
         # Send email to user for verification
+        proto_user = user_to_proto(user_exist)    
+        async with get_producer() as producer:
+            await producer.send_and_wait("email-to-unverified-user-topic", proto_user.SerializeToString())
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail=f"user '{user.email}' is already exists, but not verified, we have sent you an email, please check and verify")
     validate_password(user.password)
     hash_password = hashed_password(user.password)
@@ -54,7 +57,7 @@ async def verify_user(user: UserAccountVerifyReq, session: Annotated[Session, De
 
     return {"status": status.HTTP_201_CREATED, "message": "you have succcessfully verified, please visit to login"}
 
-@router.post("/user-login")
+@router.post("/user-login", response_model=UserToken)
 async def user_login(user: Annotated[Any, Depends(OAuth2PasswordRequestForm)] , session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     user_exist: UserModel = session.exec(select(UserModel).where(UserModel.email == user.username.lower())).first()
     if not user_exist:
@@ -63,6 +66,9 @@ async def user_login(user: Annotated[Any, Depends(OAuth2PasswordRequestForm)] , 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid creadential")
     if not user_exist.is_verified:
         # send user verification email
+        proto_user = user_to_proto(user_exist)    
+        async with get_producer() as producer:
+            await producer.send_and_wait("email-to-unverified-user-topic", proto_user.SerializeToString())
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user '{user.username}' is not verified, we have send you and email, please check and verify to yourself")
     payload = {"id": str(user_exist.id), "first_name":user_exist.first_name, "last_name":user_exist.last_name, "email":user_exist.email}
     token = create_access_token(payload)
@@ -73,20 +79,43 @@ async def user_login(user: Annotated[Any, Depends(OAuth2PasswordRequestForm)] , 
         await producer.send_and_wait("user-token-topic", proto_user_token.SerializeToString())
         return UserToken(access_token=token, token_type="bearer", expires_in=str(token_expired_at)) # {"status": status.HTTP_200_OK, "message": "you have succcessfully login", "token": token, "user": user_exist}
 
-@router.get("/get_all_users")
+@router.post("/reset-password-request")
+async def reset_user_password(email: EmailStr, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
+    user_exist: UserModel = session.exec(select(UserModel).where(UserModel.email == email.lower())).first()
+    if not user_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user email '{email}' is not registered, please visit to signup and register to yourself")
+    verification_context = user_exist.get_context_str("VERIFY_USER_CONTEXT") 
+    token_url = hashed_url(verification_context)   
+    proto_user = user_to_proto(user_exist)    
+    async with get_producer() as producer:
+        await producer.send_and_wait("email-to-reset-password-user-topic", proto_user.SerializeToString())
+    return {"status": status.HTTP_200_OK, "message": f"Email has been sent to {email}, please check and verify, 'Token' {token_url} "}
+
+@router.post("/verify-reset")
+async def verify_reset_user_password(user_data: VerifyResetPasswordUserReq, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
+    user_exist: UserModel = session.exec(select(UserModel).where(UserModel.email == user_data.email.lower())).first()
+    if not user_exist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user email '{user_data.email}' is not Found")
+    verification_context = str(user_exist.get_context_str("VERIFY_USER_CONTEXT"))
+    if not verify_hashed_url(db_url=verification_context, user_url=user_data.token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user token eighter is expired or invalid")
+    new_password = hashed_password(user_data.new_password)
+    user_exist.password = new_password
+    user_exist.updated_at = datetime.now(timezone.utc)
+    proto_user = user_to_proto(user_exist)    
+    async with get_producer() as producer:
+        await producer.send_and_wait("verify-reset-password-user-topic", proto_user.SerializeToString())
+    return {"status": status.HTTP_200_OK, "message": f"Password successfully has been changed"}
+
+@router.get("/get_all_users", response_model=list[UserModel])
 async def get_all_users(session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     users = session.exec(select(UserModel)).all()
     return users
 
-@router.get("/get_all_tokens")
-async def get_all_tokens(session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
-    tokens = session.exec(select(UserTokenModel)).all()
-    return tokens
-    
-@router.get("/me")
-async def about_user(token: Annotated[str, Depends(oauth2_scheme)]):
+@router.get("/about-me")
+async def about_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     user_data = decode_access_token(token)
-    return {"user_data": user_data}
+    return user_data
     
 # @router.get("/user-email-tokens")
 # async def about_user(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):

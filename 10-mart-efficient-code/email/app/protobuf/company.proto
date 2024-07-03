@@ -1,8 +1,15 @@
-syntax="proto3";
+syntax = "proto3";
+
+package company;
 
 message Company {
-    string name = 1;
-    string description = 2;
-    string email = 3;
-    string password = 4;
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string email = 4;
+    string password = 5;
+    bool is_verified = 6;
+    string verified_at = 7;
+    string created_at = 8;
+    string updated_at = 9;
 }
