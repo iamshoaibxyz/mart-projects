@@ -1,0 +1,228 @@
+version: '3.8'
+services:
+  product:
+    build:
+      context: ./product
+      dockerfile: Dockerfile
+    container_name: productContainer
+    profiles:
+      - abc
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./product:/code/"   # Volume bind mounting
+    networks:
+      - mart-network
+    # depends_on:
+    #   # - postgres_db
+    #   - broker
+
+  order:
+    build:
+      context: ./order
+      dockerfile: Dockerfile
+    container_name: orderContainer
+    profiles:
+      - abc
+    ports:
+      - "8004:8004"
+    volumes:
+      - "./order:/code/"   # Volume bind mounting
+    networks:
+      - mart-network
+    # depends_on:
+    #   # - postgres_db
+    #   - broker
+
+  inventory:
+    build:
+      context: ./inventory
+      dockerfile: Dockerfile
+    container_name: inventoryContainer
+    profiles:
+      - abc
+      - inventory
+    ports:
+      - "8004:8004"
+    networks:
+      - mart-network
+    volumes:
+      - "./inventory:/code/"   # Volume bind mounting
+    # depends_on:
+    #   # - postgres_db
+    #   - broker
+
+  auth:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: authContainer
+    profiles:
+      - abc
+      - auth
+    ports:
+      - "8001:8001"
+    volumes:
+      - "./auth:/code/"   # Volume bind mounting
+    networks:
+      - mart-network
+    # depends_on:
+    #   # - postgres_db
+    #   - broker
+
+  email:
+    build:
+      context: ./email
+      dockerfile: Dockerfile
+    container_name: emailContainer
+    profiles:
+      - abc
+      - auth
+    ports:
+      - "8002:8002"
+    networks:
+      - mart-network
+    volumes:
+      - "./email:/code/"   # Volume bind mounting
+    # depends_on:
+    #   # - postgres_db
+    #   - broker
+
+  payment:
+    build:
+      context: ./payment
+      dockerfile: Dockerfile
+    container_name: paymentContainer
+    profiles:
+      - abc
+    ports:
+      - "8003:8003"
+    volumes:
+      - "./payment:/code/"   # Volume bind mounting
+    networks:
+      - mart-network
+    # depends_on:
+    #   # - postgres_db
+    #   - broker
+
+  smtp-service:
+    image: axllent/mailpit
+    restart: unless-stopped
+    container_name: smtpContainer
+    profiles:
+      - all
+      - abc
+      - auth
+    networks:
+      - mart-network
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    # depends_on:
+      # - postgres_db
+      # - broker
+
+  postgres_db:
+    image: postgres:latest
+    restart: always
+    container_name: postgresContainer
+    profiles:
+      - all
+      - auth
+    environment:
+      - POSTGRES_USER=shoaib
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=mydatabase
+    ports:
+      - "5432:5432"
+    networks:
+      - mart-network
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+
+  apicurio-registry:
+    image: apicurio/apicurio-registry-sql:latest-release
+    container_name: apicurio-registry
+    profiles:
+      - alls
+    environment:
+      QUARKUS_  ILE: prod
+      LOG_LEVEL: INFO 
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgresContainer:5432/mydatabase
+      QUARKUS_DATASOURCE_USERNAME: shoaib
+      QUARKUS_DATASOURCE_PASSWORD: mypassword
+      REGISTRY_STORAGE: jdbc
+      # REGISTRY_APP_PORT: 8082
+      REGISTRY_SQL_INIT: true  # Ensures the schema is created on startup
+      KAFKA_BOOTSTRAP_SERVERS: broker:19092
+      REGISTRY_PROPERTIES: apicurio.registry.storage=sql,apicurio.registry.sql.init=true,apicurio.registry.kafka.bootstrap-servers=broker:19092
+    networks:
+      - mart-network
+    ports:
+      - "8080:8080"
+    
+
+  broker:
+    image: apache/kafka:3.7.0
+    hostname: broker
+    container_name: broker
+    profiles:
+      - all
+      - auth
+    ports:
+      - '9092:9092'
+    networks:
+      - mart-network
+      - kafka-ui-network
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT_HOST://localhost:9092,PLAINTEXT://broker:19092'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
+      KAFKA_LISTENERS: 'CONTROLLER://:29093,PLAINTEXT_HOST://:9092,PLAINTEXT://:19092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+
+  # kafdrop: 
+  #   image: obsidiandynamics/kafdrop:latest
+  #   container_name: kafdrop
+  #   ports:
+  #     - "9090:9090"  # Map port 9090 on the host to port 9090 in the container
+  #   environment:
+  #     KAFKA_BROKERS: broker:19092  # Connect to your Kafka broker at port 19092
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui2
+    profiles:
+      - alls
+      - auth
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: 'Local Kafka Cluster'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'broker:19092'
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      - broker
+    networks:
+      - kafka-ui-network
+
+volumes:
+  postgres_db:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+  kafka-ui-network:
+    driver: bridge
+  mart-network:
+    driver: bridge

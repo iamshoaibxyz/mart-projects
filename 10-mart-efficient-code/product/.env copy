@@ -1,0 +1,2 @@
+
+DATABASE_URL="postgresql://shoaib:mypassword@postgresContainer:5432/mydatabase"
