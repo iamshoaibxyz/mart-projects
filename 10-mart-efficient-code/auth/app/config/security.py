@@ -13,17 +13,25 @@ def hashed_password(plain_password: str):
 def verify_hashed_password(plain_password: str, hashed_password: str):
     return pwd_context.verify(plain_password, hashed_password)
 
-def hashed_url(url: str):
+def hashed_url(url: str) -> str:
     hashed_password = pwd_context.hash(url)
     return base64.urlsafe_b64encode(hashed_password.encode("utf-8")).decode("utf-8")
 
-def verify_hashed_url(db_url: str, user_url: str):
+def verify_hashed_url(db_url: str, user_url: str) -> bool:
     try:
         decoded_hashed = base64.urlsafe_b64decode(user_url).decode("utf-8")
         return pwd_context.verify(db_url, decoded_hashed)
     except Exception as e:
         print(f"Error decoding token: {str(e)}")
-        return {"error": str(e)}
+        return False
+
+# def verify_hashed_url(db_url: str, user_url: str):
+#     try:
+#         decoded_hashed = base64.urlsafe_b64decode(user_url).decode("utf-8")
+#         return pwd_context.verify(db_url, decoded_hashed)
+#     except Exception as e:
+#         print(f"Error decoding token: {str(e)}")
+#         return {"error": str(e)}
 
 def create_access_token(payload: dict):
     token_expiry = datetime.now(timezone.utc) + timedelta(minutes= float(TOKEN_EXPIRY) )

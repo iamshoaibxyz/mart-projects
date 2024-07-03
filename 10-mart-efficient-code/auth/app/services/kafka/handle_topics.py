@@ -41,7 +41,6 @@ async def verify_new_user(user_proto):
         proto_user = user_to_proto(user)
         await producer.send_and_wait("send-email-to-new-verify-user-topic", proto_user.SerializeToString())
 
-
 async def user_token(proto_user_token):
     user_token: UserTokenModel = proto_to_user_token(proto_user_token)
     async with get_session() as session:
@@ -50,8 +49,6 @@ async def user_token(proto_user_token):
         session.add(user)
         session.commit()
         session.refresh(user)
-
-
 async def register_new_company(company_proto):
     new_company = proto_to_company(company_proto)
     async with get_session() as session:
@@ -66,7 +63,8 @@ async def register_new_company(company_proto):
 async def verify_new_company(company_proto):
     company_model = proto_to_company(company_proto)
     async with get_session() as session:
-        company = session.exec(select(CompanyModel).where(CompanyModel.id==company_model.id)).first()
+        # company = session.exec(select(CompanyModel).where(CompanyModel.id==company_model.id)).first()
+        company = session.get(CompanyModel, company_model.id)
         company.is_verified = True
         company.verified_at = datetime.now(timezone.utc)
         company.updated_at = datetime.now(timezone.utc)
@@ -75,8 +73,8 @@ async def verify_new_company(company_proto):
         session.refresh(company)
     # send to kafka and then email-service will be recived
     async with get_producer() as producer:
-        proto_user = user_to_proto(company)
-        await producer.send_and_wait("send-email-to-new-verify-company-topic", proto_user.SerializeToString())
+        proto_company = company_to_proto(company)
+        await producer.send_and_wait("send-email-to-new-verify-company-topic", proto_company.SerializeToString())
 
 async def company_token(proto_company_token):
     company_token = proto_to_company_token(proto_company_token)

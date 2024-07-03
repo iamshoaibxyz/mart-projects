@@ -16,7 +16,8 @@ from sqlmodel import select
 from app.utils.proto_utils import company_to_proto, company_token_to_proto
 
 router = APIRouter(prefix="/company", tags=["Company Auth"], responses={404: {"description": "Not found"}})
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/user-login")
+
+oauth2_company_scheme = OAuth2PasswordBearer(tokenUrl="company/company-login")
 
 
 @router.post("/register")
@@ -48,8 +49,8 @@ async def verify_company(company: CompanyTokenReq, session: Annotated[Session, D
     company_exist: CompanyModel = session.exec(select(CompanyModel).where(CompanyModel.email == company.email)).first()
     if not company_exist:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid creadential")
-    if company_exist.is_verified:
-        return {"message": f"Company '{company_exist.name}' has already verified, please login it"}
+    # if company_exist.is_verified:
+    #     return {"message": f"Company '{company_exist.name}' has already verified, please login it"}
     context_str = str(company_exist.get_context_str())
     if not verify_hashed_url(context_str, company.token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token eigther is invalid or expired")
@@ -80,7 +81,7 @@ async def company_login(company: Annotated[Any, Depends(OAuth2PasswordRequestFor
         return CompanyToken(access_token=token, token_type="bearer", expires_in=str(token_expired_at)) # {"status": status.HTTP_200_OK, "message": "you have succcessfully login", "token": token, "user": user_exist}
 
 @router.get("/get-all-companies")
-async def get_all_companies(session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
+async def get_all_companies(session: Annotated[Session, Depends(get_session)], token: Annotated[str, Depends(oauth2_company_scheme)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     companies = session.exec(select(CompanyModel)).all()
     return companies
 
@@ -91,7 +92,7 @@ async def get_all_companies(session: Annotated[Session, Depends(get_session)]): 
     
 # @router.get("/me")
 # async def about_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    user_data = decode_access_token(token)
-    return {"user_data": user_data}
+    # user_data = decode_access_token(token)
+    # return {"user_data": user_data}
 
 
