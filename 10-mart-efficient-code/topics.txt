@@ -3,3 +3,11 @@ email-to-new-user-topic
 email-to-new-verified-user-topic
 email-to-reset-password-user-topic
 email-verify-reset-password-user
+
+
+
+
+email-to-unverified-company-topic
+register-new-company-topic
+
+send-email-to-new-company-topic

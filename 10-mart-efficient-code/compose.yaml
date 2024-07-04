@@ -1,22 +1,23 @@
 version: '3.8'
 services:
+
   product:
     build:
       context: ./product
       dockerfile: Dockerfile
     container_name: productContainer
     profiles:
-      - abc
       - all
+      # - need
     ports:
-      - "8000:8000"
+      - "8004:8004"
     volumes:
       - "./product:/code/"   # Volume bind mounting
     networks:
       - mart-network
-    # depends_on:
-    #   # - postgres_db
-    #   - broker
+    depends_on:
+      - postgres_db
+      - broker
 
   order:
     build:
@@ -24,17 +25,16 @@ services:
       dockerfile: Dockerfile
     container_name: orderContainer
     profiles:
-      - abc
       - all
     ports:
-      - "8004:8004"
+      - "8005:8005"
     volumes:
       - "./order:/code/"   # Volume bind mounting
     networks:
       - mart-network
-    # depends_on:
-    #   # - postgres_db
-    #   - broker
+    depends_on:
+      - postgres_db
+      - broker
 
   inventory:
     build:
@@ -42,37 +42,55 @@ services:
       dockerfile: Dockerfile
     container_name: inventoryContainer
     profiles:
-      - abc
       - all
       - inventory
     ports:
-      - "8004:8004"
+      - "8006:8006"
     networks:
       - mart-network
     volumes:
       - "./inventory:/code/"   # Volume bind mounting
-    # depends_on:
-    #   # - postgres_db
-    #   - broker
+    depends_on:
+      - postgres_db
+      - broker
 
-  auth:
+  user-auth:
     build:
-      context: ./auth
+      context: ./auth-user
       dockerfile: Dockerfile
-    container_name: authContainer
+    container_name: authUserContainer
     profiles:
-      - abc
       - all
       - auth
+      - need
     ports:
       - "8001:8001"
     volumes:
       - "./auth:/code/"   # Volume bind mounting
     networks:
       - mart-network
-    # depends_on:
-    #   # - postgres_db
-    #   - broker
+    depends_on:
+      - postgres_db
+      - broker
+
+  company-auth:
+    build:
+      context: ./auth-company
+      dockerfile: Dockerfile
+    container_name: authCompanyContainer
+    profiles:
+      - all
+      - auth
+      - need
+    ports:
+      - "8002:8002"
+    volumes:
+      - "./auth:/code/"   # Volume bind mounting
+    networks:
+      - mart-network
+    depends_on:
+      - postgres_db
+      - broker
 
   email:
     build:
@@ -80,18 +98,18 @@ services:
       dockerfile: Dockerfile
     container_name: emailContainer
     profiles:
-      - abc
       - all
       - auth
+      - need
     ports:
-      - "8002:8002"
+      - "8003:8003"
     networks:
       - mart-network
     volumes:
       - "./email:/code/"   # Volume bind mounting
-    # depends_on:
-    #   # - postgres_db
-    #   - broker
+    depends_on:
+      - postgres_db
+      - broker
 
   payment:
     build:
@@ -99,17 +117,17 @@ services:
       dockerfile: Dockerfile
     container_name: paymentContainer
     profiles:
-      - abc
       - all
+      # - need
     ports:
-      - "8003:8003"
+      - "8007:8007"
     volumes:
       - "./payment:/code/"   # Volume bind mounting
     networks:
       - mart-network
-    # depends_on:
-    #   # - postgres_db
-    #   - broker
+    depends_on:
+      - postgres_db
+      - broker
 
   smtp-service:
     image: axllent/mailpit
@@ -117,8 +135,8 @@ services:
     container_name: smtpContainer
     profiles:
       - all
-      - abc
       - auth
+      - need
     networks:
       - mart-network
     ports:
@@ -135,6 +153,7 @@ services:
     profiles:
       - all
       - auth
+      - need
     environment:
       - POSTGRES_USER=shoaib
       - POSTGRES_PASSWORD=mypassword
@@ -175,6 +194,7 @@ services:
     profiles:
       - all
       - auth
+      - need
     ports:
       - '9092:9092'
     networks:

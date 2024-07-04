@@ -6,7 +6,7 @@ from app.config.database import lifespan
 
 # resend.api_key = "re_123456789"
 
-app : FastAPI = FastAPI(lifespan=lifespan, servers=[{"url":"http://127.0.0.1:8002"}])
+app : FastAPI = FastAPI(lifespan=lifespan, servers=[{"url":"http://127.0.0.1:8003"}])
 
 @app.get("/")
 def root():

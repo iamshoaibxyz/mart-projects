@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from app.config.database import lifespan
 
 app : FastAPI = FastAPI(lifespan=lifespan, title="Basic Mart", servers=[{
-    "url": "http://127.0.0.1:8000",
+    "url": "http://127.0.0.1:8004",
     "description": "Development server"
 }])
 

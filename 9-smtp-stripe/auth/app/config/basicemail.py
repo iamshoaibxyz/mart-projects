@@ -14,8 +14,6 @@ config = ConnectionConfig(
     VALIDATE_CERTS=True
     )
 
-# app = FastAPI()
-
 html = """
 <p> Thanks for using fastapi-mail </p>
 """
