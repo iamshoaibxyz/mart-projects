@@ -3,7 +3,7 @@ from sqlalchemy import TEXT, Column
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING, ForwardRef
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 class CommentModel(SQLModel, table=True):
@@ -13,8 +13,8 @@ class CommentModel(SQLModel, table=True):
     product_id: UUID = Field(foreign_key="product.id")
     comment_text: str = Field(sa_column=Column(TEXT, nullable=False))
     rating: Optional[float] = Field(default=0.0)  # Rating out of 5
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     user: Optional["UserModel"] = Relationship(back_populates="comments")
     product: Optional["ProductModel"] = Relationship(back_populates="comments")
 
@@ -23,7 +23,7 @@ class Email(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     recipient_email: str = Field(nullable=False)
     subject: str = Field(nullable=False)
-    sent_at: datetime = Field(default_factory=datetime.utcnow)
+    sent_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = Field(nullable=False)
     
     contents: List["EmailContent"] = Relationship(back_populates="email")
@@ -51,7 +51,7 @@ class OrderPlacedModel(SQLModel, table=True):
     product_price: float
     quantity: int
     total_price: float
-    order_date: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    order_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     delivery_date: Optional[datetime] = None
     delivered: bool = Field(default=False)
     status: OrderStatus = Field(default=OrderStatus.PENDING)
@@ -59,10 +59,8 @@ class OrderPlacedModel(SQLModel, table=True):
     delivery_address: str
     user: Optional["UserModel"] = Relationship(back_populates="orders")
     product: Optional["ProductModel"] = Relationship(back_populates="orders")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ProductModel(SQLModel, table=True):
     __tablename__ = 'product'
@@ -73,12 +71,22 @@ class ProductModel(SQLModel, table=True):
     company_id: UUID = Field(foreign_key="company.id")
     product_ranking: Optional[float] = Field(default=0.0)
     stock: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     company: Optional["CompanyModel"] = Relationship(back_populates="products")
     comments: Optional[List["CommentModel"]] = Relationship(back_populates="product")
     orders: Optional[List["OrderPlacedModel"]] = Relationship(back_populates="product")
+    inventories: Optional[List["InventoryModel"]] = Relationship(back_populates="product")
 
+class InventoryModel(SQLModel, table=True):
+    __tablename__ = 'inventory'
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    product_id: UUID = Field(foreign_key="product.id", nullable=False)
+    # warehouse_id: UUID = Field(nullable=False)
+    quantity: int = Field(default=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    product: Optional["ProductModel"] = Relationship(back_populates="inventories")
 
 class CompanyModel(SQLModel, table=True):
     __tablename__ = 'company'
@@ -90,23 +98,21 @@ class CompanyModel(SQLModel, table=True):
     is_verified: bool = Field(default=False, nullable=True)
     verified_at: Optional[datetime] = Field(None, nullable=True)
     tokens: Optional[List["CompanyTokenModel"]] = Relationship(back_populates="company")
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     products: Optional[List["ProductModel"]] = Relationship(back_populates="company")
 
-    def get_context_str(self):
-        return f"{"PASSWORD_CONTEXT"}{self.password[-7:]}{self.updated_at.strftime('%Y%m%d%H%M%S')}"
-    
+    def get_context_str(self, context: str = "PASSWORD_CONTEXT"):
+        return f"{context}{self.password[-7:]}{self.updated_at.strftime('%Y%m%d%H%M%S')}"
 
 class CompanyTokenModel(SQLModel, table=True):
     __tablename__ = "company_token"
     id : UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     company_id: Optional[UUID] = Field(None, foreign_key="company.id")
     token: str
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False )
     expired_at: datetime = Field(nullable=False) 
     company: Optional["CompanyModel"] = Relationship(back_populates="tokens")
-
 
 class UserModel(SQLModel, table=True):
     __tablename__ = "user"
@@ -117,8 +123,8 @@ class UserModel(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     is_verified: bool = Field(default=False, nullable=True)
     verified_at: Optional[datetime] = Field(None, nullable=True)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow, nullable=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     tokens: Optional[List["UserTokenModel"]] = Relationship(back_populates="user")
     orders: Optional[List["OrderPlacedModel"]] = Relationship(back_populates="user")
     comments: Optional[List["CommentModel"]] = Relationship(back_populates="user")
@@ -131,6 +137,6 @@ class UserTokenModel(SQLModel, table=True):
     id : UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: Optional[UUID] = Field(None, foreign_key="user.id")
     token: str
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False )
     expired_at: datetime = Field(nullable=False) 
     user: "UserModel" = Relationship(back_populates="tokens")

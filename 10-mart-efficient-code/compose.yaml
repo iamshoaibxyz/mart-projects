@@ -66,7 +66,7 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - "./auth:/code/"   # Volume bind mounting
+      - "./auth-user:/code/"   # Volume bind mounting
     networks:
       - mart-network
     depends_on:
@@ -85,7 +85,7 @@ services:
     ports:
       - "8002:8002"
     volumes:
-      - "./auth:/code/"   # Volume bind mounting
+      - "./auth-company:/code/"   # Volume bind mounting
     networks:
       - mart-network
     depends_on:
@@ -186,7 +186,6 @@ services:
     ports:
       - "8080:8080"
     
-
   broker:
     image: apache/kafka:3.7.0
     hostname: broker
@@ -216,14 +215,6 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
 
-  # kafdrop: 
-  #   image: obsidiandynamics/kafdrop:latest
-  #   container_name: kafdrop
-  #   ports:
-  #     - "9090:9090"  # Map port 9090 on the host to port 9090 in the container
-  #   environment:
-  #     KAFKA_BROKERS: broker:19092  # Connect to your Kafka broker at port 19092
-
   kafka-ui:
     image: provectuslabs/kafka-ui
     container_name: kafka-ui2
@@ -241,8 +232,26 @@ services:
     networks:
       - kafka-ui-network
 
+  pgadmin:
+    image: dpage/pgadmin4:8.6
+    container_name: pgadmin4Container
+    restart: always
+    ports:
+      - "8888:80"
+    profiles:
+      - need
+    networks:
+      - mart-network
+    environment:
+      PGADMIN_DEFAULT_EMAIL: shoaib@shoaib.com
+      PGADMIN_DEFAULT_PASSWORD: Abcdef1@
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
 volumes:
   postgres_db:
+    driver: local
+  pgadmin_data:
     driver: local
 
 networks:

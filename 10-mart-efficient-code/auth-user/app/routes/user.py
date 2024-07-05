@@ -39,9 +39,7 @@ async def create_user(user: UserReq, session: Annotated[Session, Depends(get_ses
     proto_user = user_to_proto(new_user)    
     async with get_producer() as producer:
         await producer.send_and_wait("register-new-user-topic", proto_user.SerializeToString())
-    context_str = str(new_user.get_context_str())
-    hash_url = hashed_url(context_str)
-    return {"hashed_url": hash_url, "status": status.HTTP_201_CREATED, "message": "you have succcessfully signed up and we have send you an email, please check and verify"}
+    return {"status": status.HTTP_201_CREATED, "message": "you have succcessfully signed up and we have send you an email, please check and verify"}
 
 @router.post("/verify-user-account")
 async def verify_user(user: UserAccountVerifyReq, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
@@ -118,3 +116,13 @@ async def about_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     user_data = decode_access_token(token)
     return user_data
     
+
+@router.get("/user-profile", response_model=UserSchema)
+async def about_user(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
+    try:
+        user_data = decode_access_token(token)
+        id = user_data.get("sub").get("id")
+        user = session.get(UserModel, UUID(id))
+        return user
+    except Exception as e:
+        return {"error": str(e)}
