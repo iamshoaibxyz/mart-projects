@@ -1,18 +1,19 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, constr, Field
 from datetime import datetime
 from uuid import UUID
 from typing import List, Optional
 
-class UserTokenSchema(BaseModel):
+class BaseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
+class UserTokenSchema(BaseResponse):
     id: UUID
     token: str
     created_at: datetime
     expired_at: datetime
 
-    class Config:
-        orm_mode = True
 
-class UserSchema(BaseModel):
+class UserSchema(BaseResponse):
     id: UUID
     first_name: str
     last_name: str
@@ -23,15 +24,19 @@ class UserSchema(BaseModel):
     created_at: datetime
     tokens: List[UserTokenSchema] = []
 
-    class Config:
-        orm_mode = True
 
 class UserReq(BaseModel):
     first_name: str
     last_name: str
     password: str
     email: EmailStr
-
+    # email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@gmail\.com$')
+    # @field_validator("email")
+    # def validate_gmail(cls, v):
+    #     if not v.endswith("@gmail.com"):
+    #         raise ValueError("Only Gmail addresses are allowed")
+    #     return v
+    
 class VerifyResetPasswordUserReq(BaseModel):
     token: str
     email: EmailStr
@@ -52,3 +57,18 @@ class UserToken(BaseModel):
     token_type: str
     expires_in: str 
     # scope: str = "create"
+
+class UserBasicInfoRes(BaseResponse):
+    id: UUID
+    first_name: str
+    last_name: str
+    email: str
+    is_verified: bool 
+    created_at: datetime
+
+class GetUserByIdReq(BaseModel):
+    id: str
+
+class GetUserByEmailReq(BaseModel):
+    email: str
+    # email: EmailStr

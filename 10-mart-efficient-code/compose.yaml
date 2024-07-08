@@ -8,7 +8,7 @@ services:
     container_name: productContainer
     profiles:
       - all
-      # - need
+      - need
     ports:
       - "8004:8004"
     volumes:
@@ -43,6 +43,7 @@ services:
     container_name: inventoryContainer
     profiles:
       - all
+      - need
       - inventory
     ports:
       - "8006:8006"
@@ -62,7 +63,7 @@ services:
     profiles:
       - all
       - auth
-      - need
+      # - need
     ports:
       - "8001:8001"
     volumes:
@@ -100,7 +101,7 @@ services:
     profiles:
       - all
       - auth
-      - need
+      # - need
     ports:
       - "8003:8003"
     networks:
@@ -136,7 +137,7 @@ services:
     profiles:
       - all
       - auth
-      - need
+      # - need
     networks:
       - mart-network
     ports:

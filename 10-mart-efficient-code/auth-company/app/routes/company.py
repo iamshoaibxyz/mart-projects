@@ -3,8 +3,8 @@ from uuid import UUID
 from pydantic import EmailStr
 from app.config.security import hashed_password, verify_hashed_password, verify_hashed_url, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from app.schemas.company import UpdateCompanyProfileReq, CompanyReq, CompanyToken, CompanyTokenReq, CompanySchema, VerifyResetPasswordCompanyReq
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from app.schemas.company import UpdateCompanyProfileReq, CompanyBasicInfoRes, getCompanyByNameReq, getCompanyByEmailReq, getCompanyByIdReq, CompanyReq, CompanyToken, CompanyTokenReq, CompanySchema, VerifyResetPasswordCompanyReq
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from app.config.validation import validate_password
 from datetime import datetime, timedelta, timezone
 from app.config.database import get_session
@@ -20,8 +20,10 @@ router = APIRouter(prefix="/company", tags=["Company Auth"], responses={404: {"d
 
 oauth2_company_scheme = OAuth2PasswordBearer(tokenUrl="company/company-login")
 
-@router.post("/register")
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def create_company(company: CompanyReq, session: Annotated[Session, Depends(get_session)]):
+    if not company.email.endswith("@gmail.com"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only Gmail addresses are allowed")
     company_name_exist = session.exec(select(CompanyModel).where(CompanyModel.name== company.name.lower())).first()
     company_exist: CompanyModel = session.exec(select(CompanyModel).where(CompanyModel.email == company.email.lower())).first()
     if company_exist:
@@ -45,13 +47,13 @@ async def create_company(company: CompanyReq, session: Annotated[Session, Depend
         await producer.send_and_wait("register-new-company-topic", proto_company2.SerializeToString())
     return {"status": status.HTTP_201_CREATED, "message": "you have succcessfully signed up the company and we have send you an email, please check and verify"}
 
-@router.post("/verify-company-account")
+@router.post("/verify-company-account", status_code=status.HTTP_200_OK) 
 async def verify_company(company: CompanyTokenReq, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     company_exist: CompanyModel = session.exec(select(CompanyModel).where(CompanyModel.email == company.email.lower())).first()
     if not company_exist:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid creadential")
-    # if company_exist.is_verified:
-    #     return {"message": f"Company '{company_exist.name}' has already verified, please login it"}
+    if company_exist.is_verified:
+        return {"message": f"Company '{company_exist.name}' has already verified, please login it"}
     context_str = str(company_exist.get_context_str())
     if not verify_hashed_url(context_str, company.token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token eigther is invalid or expired")
@@ -59,7 +61,7 @@ async def verify_company(company: CompanyTokenReq, session: Annotated[Session, D
     async with get_producer() as producer:
         await producer.send_and_wait("verify-new-company-topic", proto_company.SerializeToString())
 
-    return {"status": status.HTTP_201_CREATED, "message": f"This company {company_exist.name} have succcessfully verified, please visit to login"}
+    return {"status": status.HTTP_200_OK, "message": f"This company {company_exist.name} have succcessfully verified, please visit to login"}
 
 @router.post("/company-login")
 async def company_login(company: Annotated[Any, Depends(OAuth2PasswordRequestForm)] , session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
@@ -69,7 +71,7 @@ async def company_login(company: Annotated[Any, Depends(OAuth2PasswordRequestFor
     if not verify_hashed_password(company.password, company_exist.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid creadential")
     if not company_exist.is_verified:
-        # send company verification email
+        # send email for company verification 
         proto_company = company_to_proto(company_exist)    
         async with get_producer() as producer:
             await producer.send_and_wait("email-to-unverified-company-topic", proto_company.SerializeToString())             
@@ -92,7 +94,7 @@ async def reset_company_password(email: EmailStr, session: Annotated[Session, De
     async with get_producer() as producer:
         await producer.send_and_wait("email-to-reset-password-company-topic", proto_company.SerializeToString())
     return {"status": status.HTTP_200_OK, "message": f"Email has been sent to {email}, please check and set new password"}
-
+ 
 @router.post("/verify-reset")
 async def verify_reset_user_password(company_data: VerifyResetPasswordCompanyReq, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     company_exist: CompanyModel = session.exec(select(CompanyModel).where(CompanyModel.email == company_data.email.lower())).first()
@@ -138,6 +140,27 @@ async def about_company(token: Annotated[str, Depends(oauth2_company_scheme)], s
         return company
     except Exception as e:
         return {"error": str(e)}
+
+@router.get("/get-company-by-id/{id}", response_model=CompanyBasicInfoRes)
+async def company_by_id(data: getCompanyByIdReq, session: Annotated[Session, Depends(get_session)]):
+    company = session.exec(select(CompanyModel).where(CompanyModel.id==UUID(data.id))).first()
+    if not company:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
+    return company
+
+@router.get("/get-company-by-email/{email}", response_model=CompanyBasicInfoRes)
+async def company_by_email(data: getCompanyByEmailReq, session: Annotated[Session, Depends(get_session)]):
+    company = session.exec(select(CompanyModel).where(CompanyModel.email==data.email.lower())).first()
+    if not company:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
+    return company
+
+@router.get("/get-company-by-name/{name}", response_model=CompanyBasicInfoRes)
+async def company_by_name(data: getCompanyByNameReq, session: Annotated[Session, Depends(get_session)]):
+    company = session.exec(select(CompanyModel).where(CompanyModel.name==data.name.lower())).first()
+    if not company:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
+    return company
 
 @router.put("/update-profile")
 async def update_profile(updated_data: UpdateCompanyProfileReq, token: Annotated[str, Depends(oauth2_company_scheme)], session: Annotated[Session, Depends(get_session)]):

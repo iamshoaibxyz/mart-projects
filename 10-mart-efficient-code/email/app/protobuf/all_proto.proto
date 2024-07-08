@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package models;
+
+message Company {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string email = 4;
+    string password = 5;
+    bool is_verified = 6;
+    string verified_at = 7; // ISO 8601 format
+    repeated CompanyToken tokens = 8;
+    string created_at = 9; // ISO 8601 format
+    string updated_at = 10; // ISO 8601 format
+    repeated Product products = 11;
+}
+
+message CompanyToken {
+    string id = 1;
+    string company_id = 2;
+    string token = 3;
+    string created_at = 4; // ISO 8601 format
+    string expired_at = 5; // ISO 8601 format
+}
+
+message User {
+    string id = 1;
+    string first_name = 2;
+    string last_name = 3;
+    string password = 4;
+    string email = 5;
+    bool is_verified = 6;
+    string verified_at = 7; // ISO 8601 format
+    string updated_at = 8; // ISO 8601 format
+    string created_at = 9; // ISO 8601 format
+    repeated UserToken tokens = 10;
+    repeated OrderPlaced orders = 11;
+    repeated Comment comments = 12;
+}
+
+message UserToken {
+    string id = 1;
+    string user_id = 2;
+    string token = 3;
+    string created_at = 4; // ISO 8601 format
+    string expired_at = 5; // ISO 8601 format
+}
+
+message Comment {
+    string id = 1;
+    string user_id = 2;
+    string product_id = 3;
+    string comment_text = 4;
+    float rating = 5;
+    string created_at = 6; // ISO 8601 format
+    string updated_at = 7; // ISO 8601 format
+}
+
+message Email {
+    string id = 1;
+    string recipient_email = 2;
+    string subject = 3;
+    string sent_at = 4; // ISO 8601 format
+    string status = 5;
+    repeated EmailContent contents = 6;
+}
+
+message EmailContent {
+    string id = 1;
+    string content = 2;
+    string email_id = 3;
+}
+
+message Product {
+    string id = 1;
+    string name = 2;
+    optional string description = 3;
+    string category = 4;
+    float price = 5;
+    string company_id = 6;
+    float product_ranking = 7;
+    string created_at = 8; // ISO 8601 format
+    string updated_at = 9; // ISO 8601 format
+    repeated Comment comments = 10;
+    repeated OrderPlaced orders = 11;
+    repeated Inventory inventories = 12;
+    // int32 stock = 12;
+}
+
+enum OrderStatus {
+    PENDING = 0;
+    PROCESSING = 1;
+    SHIPPED = 2;
+    DELIVERED = 3;
+    CANCELLED = 4;
+}
+
+message OrderPlaced {
+    string id = 1;
+    string user_id = 2;
+    string product_id = 3;
+    float product_price = 4;
+    int32 quantity = 5;
+    float total_price = 6;
+    string order_date = 7; // ISO 8601 format
+    string delivery_date = 8; // ISO 8601 format
+    bool delivered = 9;
+    OrderStatus status = 10;
+    string return_back = 11; // ISO 8601 format
+    string delivery_address = 12;
+    string created_at = 13; // ISO 8601 format
+    string updated_at = 14; // ISO 8601 format
+}
+
+message Inventory {
+    string id = 1;
+    string product_id = 2;
+    int32 quantity = 3;
+    string created_at = 4; // ISO 8601 format
+    string updated_at = 5; // ISO 8601 format
+}

@@ -45,7 +45,7 @@ async def verify_new_company(company_proto):
 async def company_token(proto_company_token):
     company_token = proto_to_company_token(proto_company_token)
     async with get_session() as session:
-        company = session.get(CompanyModel, UUID(company_token.company_id))
+        company = session.get(CompanyModel, company_token.company_id)
         company.tokens.append(company_token)
         session.add(company)
         session.commit()

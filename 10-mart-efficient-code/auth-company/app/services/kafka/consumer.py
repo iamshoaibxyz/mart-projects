@@ -13,7 +13,7 @@ async def get_consumer(topic: str):
         yield consumer
     finally:
         await consumer.stop()
-
+ 
 async def kafka_consumer(topic: str):
     async with get_consumer(topic) as consumer:
         async for message in consumer:

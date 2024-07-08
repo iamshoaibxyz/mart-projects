@@ -1,7 +1,10 @@
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
+
+class BaseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
 class CompanyReq(BaseModel):
     name: str
@@ -23,17 +26,18 @@ class CompanyToken(BaseModel):
     expires_in: str 
 
 
-class CompanyTokenSchema(BaseModel):
+class CompanyTokenSchema(BaseResponse):
     id: UUID
     company_id: UUID
     token: str
     created_at: datetime
     expired_at: datetime
 
-    class Config:
-        orm_mode = True
+    # class Config:
+    #     orm_mode = True
+        
 
-class CompanySchema(BaseModel):
+class CompanySchema(BaseResponse):
     id: UUID
     name: str
     description: str
@@ -44,12 +48,28 @@ class CompanySchema(BaseModel):
     created_at: datetime
     tokens: List[CompanyTokenSchema] = []
 
-    class Config:
-        orm_mode = True
+class CompanyBasicInfoRes(BaseModel):
+    id: UUID
+    name: str
+    description: str
+    email: str
+    is_verified: bool
+    created_at: datetime
+
+    
 class VerifyResetPasswordCompanyReq(BaseModel):
     token: str
     email: EmailStr
     new_password: str
+    
+class getCompanyByIdReq(BaseModel):
+    id: str
+    
+class getCompanyByNameReq(BaseModel):
+    name: str
+    
+class getCompanyByEmailReq(BaseModel):
+    email: EmailStr
 
 class UpdateCompanyProfileReq(BaseModel):
     name: Optional[str] = None

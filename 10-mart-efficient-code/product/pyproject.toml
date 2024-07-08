@@ -16,7 +16,8 @@ pyjwt = "^2.8.0"
 aiokafka = "^0.10.0"
 protobuf = "^5.27.2"
 psycopg = "^3.2.0"
-
+pytest = "^8.2.2"
+psycopg2 = "^2.9.9"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,14 +1,21 @@
-import pytest
-from starlette.testclient import TestClient 
 from sqlmodel import create_engine, Session, SQLModel
-from app.models.all_models import CompanyModel
+from starlette.testclient import TestClient 
+import pytest
 from app.main import app
-from app.config.settings import TEST_DATABASE_URL
+from datetime import datetime, timezone
 from app.config.database import get_session
-from app.config.security import hashed_password, verify_hashed_password, hashed_url, verify_hashed_url
+from app.models.all_models import CompanyModel
+from app.config.settings import TEST_DATABASE_URL
+from app.config.security import hashed_password
 
 connection_str = str(TEST_DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 engine = create_engine(connection_str, )
+
+
+NAME="xyz"
+EMAIL="xyz@xyz.com"
+PASSWORD="Abcdef1@"
+DESCRIPTION="This is the company that provide bueaty product"
 
 @pytest.fixture(scope="function")
 def test_session():
@@ -30,3 +37,25 @@ def client(app_test, test_session):
             pass
     app_test.dependency_overrides[get_session] = _test_db
     return TestClient(app_test)
+
+@pytest.fixture(scope="function")
+def unverified_company(test_session: Session):
+    company = CompanyModel(email=EMAIL, name= NAME, description= DESCRIPTION, password= hashed_password(PASSWORD))
+    test_session.add(company)
+    test_session.commit()
+    test_session.refresh(company)
+    return company
+
+@pytest.fixture(scope="function")
+def verified_company(test_session: Session):
+    company = CompanyModel(
+        email=EMAIL, name= NAME, 
+        description= DESCRIPTION, 
+        password= hashed_password(PASSWORD), 
+        is_verified=True, 
+        verified_at=datetime.now(timezone.utc))
+    
+    test_session.add(company)
+    test_session.commit()
+    test_session.refresh(company)
+    return company

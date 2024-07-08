@@ -1,8 +1,9 @@
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
+from app.routes.inventory import router
 
-app : FastAPI = FastAPI(title="Basic Mart", servers=[{
+app : FastAPI = FastAPI(title="inventry", servers=[{
     "url": "http://127.0.0.1:8006",
     "description": "Development server"
 }])
@@ -14,3 +15,5 @@ def root():
 @app.get("/me")
 def root():
     return {"message": "Hey i am shoaib"}
+
+app.include_router(router)

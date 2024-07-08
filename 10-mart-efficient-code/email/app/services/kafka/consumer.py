@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 from uuid import UUID
 from fastapi import HTTPException
 from aiokafka import AIOKafkaConsumer
-from app.protobuf import email_pb2, email_content_pb2, user_pb2, company_pb2
-from app.services.kafka.handle_topics import email_to_reset_password_company, verify_email_to_new_company, email_to_unverified_company, email_to_new_company ,email_verify_reset_user_password, email_to_new_user, email_to_unverified_user, email_to_reset_password_user
+from app.protobuf import all_proto_pb2, email_pb2, email_content_pb2, user_pb2, company_pb2
+from app.services.kafka.handle_topics import email_to_new_product_company, email_to_reset_password_company, verify_email_to_new_company, email_to_unverified_company, email_to_new_company ,email_verify_reset_user_password, email_to_new_user, email_to_unverified_user, email_to_reset_password_user
 
 @asynccontextmanager
 async def get_consumer(topic: str):
@@ -61,6 +61,12 @@ async def kafka_consumer(topic: str):
                 company_proto = company_pb2.Company()
                 company_proto.ParseFromString(message.value)
                 await email_to_reset_password_company(company_proto)
+            
+
+            elif topic == "email-to-new-product-topic":
+                product_proto = all_proto_pb2.Product()
+                product_proto.ParseFromString(message.value)
+                await email_to_new_product_company(product_proto)
             
 
             else:

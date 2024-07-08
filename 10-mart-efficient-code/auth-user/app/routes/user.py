@@ -1,7 +1,7 @@
 from uuid import UUID
 from app.config.security import hashed_password, verify_hashed_password, hashed_url, verify_hashed_url, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from app.schemas.user import UserReq, UserAccountVerifyReq, UserToken, VerifyResetPasswordUserReq
+from app.schemas.user import UserReq, UserAccountVerifyReq, UserToken, VerifyResetPasswordUserReq, UserBasicInfoRes, GetUserByEmailReq, GetUserByIdReq 
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.config.validation import validate_password
 from datetime import datetime, timedelta, timezone
@@ -24,6 +24,8 @@ from app.schemas.user import UserSchema
  
 @router.post("/register")
 async def create_user(user: UserReq, session: Annotated[Session, Depends(get_session)]):
+    if not user.email.endswith("@gmail.com"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only Gmail addresses are allowed")
     user_exist = session.exec(select(UserModel).where(UserModel.email == user.email)).first()
     if user_exist:
         if user_exist.is_verified:
@@ -106,16 +108,29 @@ async def verify_reset_user_password(user_data: VerifyResetPasswordUserReq, sess
         await producer.send_and_wait("verify-reset-password-user-topic", proto_user.SerializeToString())
     return {"status": status.HTTP_200_OK, "message": f"Password successfully has been changed"}
 
-@router.get("/get_all_users", response_model=list[UserModel])
+@router.get("/get_all_users", response_model=list[UserBasicInfoRes])
 async def get_all_users(session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     users = session.exec(select(UserModel)).all()
     return users
 
-@router.get("/about-me")
+@router.post("/get_user_by_id", response_model=UserBasicInfoRes)
+async def get_all_users(data: GetUserByIdReq, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
+    user = session.exec(select(UserModel).where(UserModel.id==UUID(data.id))).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user not Found")    
+    return user
+
+@router.post("/get-user-by-email", response_model=UserBasicInfoRes)
+async def user_by_email(data: GetUserByEmailReq, session: Annotated[Session, Depends(get_session)]):
+    user = session.exec(select(UserModel).where(UserModel.email==data.email.lower())).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user not Found")    
+    return user
+
+@router.get("/user-token")
 async def about_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     user_data = decode_access_token(token)
     return user_data
-    
 
 @router.get("/user-profile", response_model=UserSchema)
 async def about_user(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
