@@ -98,7 +98,6 @@ class ProductModel(SQLModel, table=True):
     category: Optional[str] = Field(default="other")
     company_id: UUID = Field(foreign_key="company.id")
     product_ranking: Optional[float] = Field(default=0.0)
-    # stock: int = Field(default=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     company: Optional["CompanyModel"] = Relationship(back_populates="products")
@@ -117,8 +116,8 @@ class OrderStatus(str, Enum):
 class OrderPlacedModel(SQLModel, table=True):
     __tablename__ = 'order'
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
-    user_id: UUID = Field(foreign_key="user.id")
-    product_id: UUID = Field(foreign_key="product.id")
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    product_id: UUID = Field(foreign_key="product.id", index=True)
     product_price: float
     quantity: int
     total_price: float
@@ -140,8 +139,8 @@ class Operation(str, Enum):
 class InventoryTransaction(SQLModel, table=True):
     __tablename__ = 'inventory_transaction'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    stock_id: UUID = Field(foreign_key="stock_level.id")
-    product_id: UUID = Field(foreign_key="product.id")
+    stock_id: UUID = Field(foreign_key="stocklevel.id", index=True)
+    product_id: UUID = Field(foreign_key="product.id", index=True)
     quantity: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     operation: Operation
@@ -149,10 +148,11 @@ class InventoryTransaction(SQLModel, table=True):
     product: Optional["ProductModel"] = Relationship(back_populates="transactions")
 
 class StockLevel(SQLModel, table=True):
-    __tablename__ = 'stock_level'
+    __tablename__ = 'stocklevel'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    product_id: UUID = Field(foreign_key="product.id")
+    product_id: UUID = Field(foreign_key="product.id", unique=True, index=True)
     current_stock: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     transactions: Optional[List["InventoryTransaction"]] = Relationship(back_populates="stock")
     product: Optional["ProductModel"] = Relationship(back_populates="stock")
-

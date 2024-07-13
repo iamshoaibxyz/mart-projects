@@ -24,8 +24,8 @@ async def register_new_company(company_proto):
         session.refresh(new_company)
     # send to kafka and then email recived then send to company email for verification
     async with get_producer() as producer:
-        proto_company = company_to_proto(new_company)
-        await producer.send_and_wait("email-to-new-company-topic", proto_company.SerializeToString())
+        # proto_company = company_to_proto(new_company)
+        await producer.send_and_wait("email-to-new-company-topic", company_proto.SerializeToString())
 
 async def verify_new_company(company_proto):
     company_model = proto_to_company(company_proto)
@@ -70,3 +70,10 @@ async def update_company(proto_company):
         session.add(company)
         session.commit()
         session.refresh(company)
+
+async def delete_company(proto_company):
+    company_model = proto_to_company(proto_company)
+    async with get_session() as session:
+        company: CompanyModel = session.get(CompanyModel, company_model.id)
+        session.delete(company)
+        session.commit()

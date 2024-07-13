@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 from uuid import UUID
 from fastapi import HTTPException
 from aiokafka import AIOKafkaConsumer
-from app.schemas.protos import all_proto_pb2
-from app.services.kafka.handle_topics import add_new_product
+from app.schemas.protos import all_proto_pb2, customs_pb2
+from app.services.kafka.handle_topics import add_new_product, add_new_product_with_inventory, update_product
 
 @asynccontextmanager
 async def get_consumer(topic: str):
@@ -18,10 +18,26 @@ async def kafka_consumer(topic: str):
     async with get_consumer(topic) as consumer:
         async for message in consumer:
          
-            if topic == "add-new-product-topic":
+            if topic == "product-product-product-added":
                 product_proto = all_proto_pb2.Product()
                 product_proto.ParseFromString(message.value)
                 await add_new_product(product_proto)
+         
+            elif topic == "product_product_product_updated":
+                product_proto = all_proto_pb2.Product()
+                product_proto.ParseFromString(message.value)
+                await update_product(product_proto)
+         
+            elif topic == "product-product-product-and-inventory-added":
+                product_proto = customs_pb2.ProductWithInventory()
+                product_proto.ParseFromString(message.value)
+                await add_new_product_with_inventory(product_proto)
+
+
+            # elif topic == "product-product-product-and-inventory-added":
+            #     product_proto = all_proto_pb2.ProductStockModel()
+            #     product_proto.ParseFromString(message.value)
+            #     await add_new_product_with_inventory(product_proto)
 
             # elif topic == "verify-new-company-topic":
             #     company_verify_proto = all_proto_pb2.Company()

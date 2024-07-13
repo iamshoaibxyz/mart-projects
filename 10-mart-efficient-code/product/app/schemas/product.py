@@ -15,6 +15,12 @@ class ProductAddReq(BaseModel):
     category: str
     price: float
 
+class ProductUpdateReq(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    price: Optional[float] = None
+
 class ProductAddWithInventoryReq(BaseModel):
     name: str
     description: Optional[str] = None
@@ -47,14 +53,6 @@ class CompanySchema(BaseResponse):
     created_at: datetime
     tokens: List[CompanyTokenSchema] = []
 
-class CompanyBasicInfoRes(BaseModel):
-    id: UUID
-    name: str
-    description: str
-    email: str
-    is_verified: bool
-    created_at: datetime
-
 class ProductModelSchema(BaseResponse):
     id: str | UUID
     name: str
@@ -68,7 +66,7 @@ class ProductModelSchema(BaseResponse):
     # company: Optional["CompanyModel"] = Relationship(back_populates="products")
     # comments: Optional[List["CommentModel"]] = Relationship(back_populates="product")
     # orders: Optional[List["OrderPlacedModel"]] = Relationship(back_populates="product")
-    inventories: Optional[List["InventoryTransactionSchema"]] 
+    # transactions: Optional[List["InventoryTransactionSchema"]] 
 
 class Operation(str, Enum):
     ADD = "add"
@@ -93,6 +91,6 @@ class StockLevelSchema(BaseResponse):
     current_stock: int 
     created_at: datetime 
     updated_at: datetime 
-    transactions: Optional[List[InventoryTransactionSchema]] 
-    product: Optional[ProductModel]
+    # transactions: Optional[List[InventoryTransactionSchema]] 
+    # product: Optional[ProductModel]
 

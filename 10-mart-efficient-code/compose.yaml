@@ -82,7 +82,7 @@ services:
     profiles:
       - all
       - auth
-      - need
+      # - need
     ports:
       - "8002:8002"
     volumes:
@@ -137,15 +137,15 @@ services:
     profiles:
       - all
       - auth
-      # - need
+      - need
     networks:
       - mart-network
     ports:
       - "8025:8025"
       - "1025:1025"
-    # depends_on:
-      # - postgres_db
-      # - broker
+    depends_on:
+      - postgres_db
+      - broker
 
   postgres_db:
     image: postgres:latest
@@ -166,27 +166,27 @@ services:
     volumes:
       - postgres_db:/var/lib/postgresql/data
 
-  apicurio-registry:
-    image: apicurio/apicurio-registry-sql:latest-release
-    container_name: apicurio-registry
-    profiles:
-      - alls
-    environment:
-      QUARKUS_  ILE: prod
-      LOG_LEVEL: INFO 
-      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgresContainer:5432/mydatabase
-      QUARKUS_DATASOURCE_USERNAME: shoaib
-      QUARKUS_DATASOURCE_PASSWORD: mypassword
-      REGISTRY_STORAGE: jdbc
-      # REGISTRY_APP_PORT: 8082
-      REGISTRY_SQL_INIT: true  # Ensures the schema is created on startup
-      KAFKA_BOOTSTRAP_SERVERS: broker:19092
-      REGISTRY_PROPERTIES: apicurio.registry.storage=sql,apicurio.registry.sql.init=true,apicurio.registry.kafka.bootstrap-servers=broker:19092
-    networks:
-      - mart-network
-    ports:
-      - "8080:8080"
-    
+  # apicurio-registry:
+  #   image: apicurio/apicurio-registry-sql:latest-release
+  #   container_name: apicurio-registry
+  #   profiles:
+  #     # - alls
+  #   environment:
+  #     QUARKUS_  ILE: prod
+  #     LOG_LEVEL: INFO 
+  #     QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgresContainer:5432/mydatabase
+  #     QUARKUS_DATASOURCE_USERNAME: shoaib
+  #     QUARKUS_DATASOURCE_PASSWORD: mypassword
+  #     REGISTRY_STORAGE: jdbc
+  #     # REGISTRY_APP_PORT: 8082
+  #     REGISTRY_SQL_INIT: true  # Ensures the schema is created on startup
+  #     KAFKA_BOOTSTRAP_SERVERS: broker:19092
+  #     REGISTRY_PROPERTIES: apicurio.registry.storage=sql,apicurio.registry.sql.init=true,apicurio.registry.kafka.bootstrap-servers=broker:19092
+  #   networks:
+  #     - mart-network
+  #   ports:
+  #     - "8080:8080"
+     
   broker:
     image: apache/kafka:3.7.0
     hostname: broker
@@ -222,6 +222,7 @@ services:
     profiles:
       - all
       - auth
+      - need
     ports:
       - "8081:8080"
     environment:

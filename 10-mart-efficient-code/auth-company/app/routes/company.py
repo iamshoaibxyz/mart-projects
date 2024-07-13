@@ -30,7 +30,7 @@ async def create_company(company: CompanyReq, session: Annotated[Session, Depend
         if company_exist.name==company.name.lower():
             if company_exist.is_verified:
                 return {"message": f"Company '{company_exist.name}' is already registered and verified, please visit to login page, and login to your company"}
-            # send email to company for verification 
+            # send email to company for verification  
             proto_company1 = company_to_proto(company_exist)    
             async with get_producer() as producer:
                 await producer.send_and_wait("email-to-unverified-company-topic", proto_company1.SerializeToString())
@@ -117,7 +117,7 @@ async def logout(response: Response):
     response.headers["Authorization"] = ""
     return {"msg": "Logged out successfully"}
 
-@router.get("/get-all-companies")
+@router.get("/get-all-companies", response_model=list[CompanyBasicInfoRes])
 async def get_all_companies(session: Annotated[Session, Depends(get_session)]): #, token: Annotated[str, Depends(oauth2_company_scheme)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
     companies = session.exec(select(CompanyModel)).all()
     return companies
@@ -131,7 +131,7 @@ async def about_company(token: Annotated[str, Depends(oauth2_company_scheme)]):
     except Exception as e:
         return {"error": str(e)}
 
-@router.get("/company-profile", response_model=CompanySchema)
+@router.get("/company-profile", response_model=CompanyBasicInfoRes)
 async def about_company(token: Annotated[str, Depends(oauth2_company_scheme)], session: Annotated[Session, Depends(get_session)]):
     try:
         company_data = decode_access_token(token)
@@ -141,21 +141,21 @@ async def about_company(token: Annotated[str, Depends(oauth2_company_scheme)], s
     except Exception as e:
         return {"error": str(e)}
 
-@router.get("/get-company-by-id/{id}", response_model=CompanyBasicInfoRes)
+@router.post("/get-company-by-id/{id}", response_model=CompanyBasicInfoRes)
 async def company_by_id(data: getCompanyByIdReq, session: Annotated[Session, Depends(get_session)]):
     company = session.exec(select(CompanyModel).where(CompanyModel.id==UUID(data.id))).first()
     if not company:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
     return company
 
-@router.get("/get-company-by-email/{email}", response_model=CompanyBasicInfoRes)
+@router.post("/get-company-by-email/{email}", response_model=CompanyBasicInfoRes)
 async def company_by_email(data: getCompanyByEmailReq, session: Annotated[Session, Depends(get_session)]):
     company = session.exec(select(CompanyModel).where(CompanyModel.email==data.email.lower())).first()
     if not company:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
     return company
 
-@router.get("/get-company-by-name/{name}", response_model=CompanyBasicInfoRes)
+@router.post("/get-company-by-name/{name}", response_model=CompanyBasicInfoRes)
 async def company_by_name(data: getCompanyByNameReq, session: Annotated[Session, Depends(get_session)]):
     company = session.exec(select(CompanyModel).where(CompanyModel.name==data.name.lower())).first()
     if not company:
@@ -190,7 +190,25 @@ async def update_profile(updated_data: UpdateCompanyProfileReq, token: Annotated
         async with get_producer() as producer:
             await producer.send_and_wait("update-company-topic", proto_company.SerializeToString())
                 
-        return {"msg": "Profile updated successfully"}
+        return {"messsageg": "Profile updated successfully"}
     
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+ 
+@router.delete("/delete-company")
+async def delete_company(token: Annotated[str, Depends(oauth2_company_scheme)], session: Annotated[Session, Depends(get_session)]):
+    try:
+        decoded_token = decode_access_token(token)
+        company_id = decoded_token.get("sub").get("id")        
+        company = session.get(CompanyModel, UUID(company_id))
+        if not company:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+        proto_company = company_to_proto(company)    
+        async with get_producer() as producer:
+            await producer.send_and_wait("delete-company", proto_company.SerializeToString())
+                
+        return {"message": "Company has successfully deleted"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+  

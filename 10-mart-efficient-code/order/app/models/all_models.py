@@ -140,7 +140,7 @@ class Operation(str, Enum):
 class InventoryTransaction(SQLModel, table=True):
     __tablename__ = 'inventory_transaction'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    stock_id: UUID = Field(foreign_key="stock_level.id")
+    stock_id: UUID = Field(foreign_key="stocklevel.id")
     product_id: UUID = Field(foreign_key="product.id")
     quantity: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -149,10 +149,12 @@ class InventoryTransaction(SQLModel, table=True):
     product: Optional["ProductModel"] = Relationship(back_populates="transactions")
 
 class StockLevel(SQLModel, table=True):
-    __tablename__ = 'stock_level'
+    __tablename__ = 'stocklevel'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     product_id: UUID = Field(foreign_key="product.id")
     current_stock: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     transactions: Optional[List["InventoryTransaction"]] = Relationship(back_populates="stock")
     product: Optional["ProductModel"] = Relationship(back_populates="stock")
 

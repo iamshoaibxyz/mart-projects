@@ -161,20 +161,26 @@ def proto_to_inventory_transaction(proto: all_proto_pb2.InventoryTransaction) ->
         product_id=UUID(proto.product_id),
         quantity=proto.quantity,
         timestamp=datetime.fromisoformat(proto.timestamp),
-        operation=Operation(proto.operation.name.lower())
+        operation=Operation(proto.operation),  # Convert operation name to lowercase for enum
+        stock=proto_to_stocklevel(proto.stock) if proto.HasField("stock") else None,
+        product=proto_to_productmodel(proto.product) if proto.HasField("product") else None
     )
     return transaction
- 
+
 def inventory_transaction_to_proto(transaction: InventoryTransaction) -> all_proto_pb2.InventoryTransaction:
+    operation_map = {
+        Operation.ADD: all_proto_pb2.Operation.ADD,
+        Operation.SUBTRACT: all_proto_pb2.Operation.SUBTRACT
+    }
+    
     return all_proto_pb2.InventoryTransaction(
         id=str(transaction.id),
         stock_id=str(transaction.stock_id),
         product_id=str(transaction.product_id),
         quantity=transaction.quantity,
-        timestamp=transaction.updated_at.isoformat(),
-        operation=Operation.Value(transaction.operation.value.upper())
+        timestamp=transaction.timestamp.isoformat(),
+        # operation=Operation(transaction.operation),
+        operation=operation_map[transaction.operation],  # Use the mapping to get the correct enum value
+        stock=stocklevel_to_proto(transaction.stock) if transaction.stock else None,
+        product=product_to_proto(transaction.product) if transaction.product else None
     )
-
-
-
-

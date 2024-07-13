@@ -1,0 +1,23 @@
+-----------Company-service-----------
+
+email-to-unverified-company-topic
+register-new-company-topic
+
+product-product-product-added
+product-product-product-and-inventory-added
+product-inventory-stock-added
+product-email-product-added
+
+inventory-email-transaction-added
+
+
+
+
+psql -U shoaib -d postgres
+
+
+
+
+
+
+

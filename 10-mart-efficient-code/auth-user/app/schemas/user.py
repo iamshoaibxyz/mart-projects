@@ -15,7 +15,7 @@ class UserTokenSchema(BaseResponse):
 
 class UserSchema(BaseResponse):
     id: UUID
-    first_name: str
+    first_name: str 
     last_name: str
     email: str
     is_verified: bool
@@ -24,6 +24,10 @@ class UserSchema(BaseResponse):
     created_at: datetime
     tokens: List[UserTokenSchema] = []
 
+class UpdataUserProfileReq(BaseResponse):
+    first_name : str
+    last_name : str
+    email : EmailStr
 
 class UserReq(BaseModel):
     first_name: str

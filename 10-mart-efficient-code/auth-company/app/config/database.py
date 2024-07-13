@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     # asyncio.create_task(kafka_consumer("hello"))
     # asyncio.create_task(kafka_consumer("register-new-user-topic"))
     # asyncio.create_task(kafka_consumer("verify-new-user-topic"))
-    # asyncio.create_task(kafka_consumer("user-token-topic"))
+    asyncio.create_task(kafka_consumer("delete-company"))
     asyncio.create_task(kafka_consumer("register-new-company-topic"))
     asyncio.create_task(kafka_consumer("verify-new-company-topic"))
     asyncio.create_task(kafka_consumer("company-token-topic"))

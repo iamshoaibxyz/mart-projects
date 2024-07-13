@@ -32,9 +32,6 @@ class CompanyTokenSchema(BaseResponse):
     token: str
     created_at: datetime
     expired_at: datetime
-
-    # class Config:
-    #     orm_mode = True
         
 
 class CompanySchema(BaseResponse):
@@ -48,7 +45,7 @@ class CompanySchema(BaseResponse):
     created_at: datetime
     tokens: List[CompanyTokenSchema] = []
 
-class CompanyBasicInfoRes(BaseModel):
+class CompanyBasicInfoRes(BaseResponse):
     id: UUID
     name: str
     description: str

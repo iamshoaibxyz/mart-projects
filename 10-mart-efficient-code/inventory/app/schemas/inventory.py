@@ -40,12 +40,9 @@ class InventoryTransactionSchema(BaseResponse):
     product_id: str | UUID
     quantity: int
     timestamp: datetime
-    created_at: datetime 
-    updated_at: datetime 
-    product: ProductModel
     operation: Operation
-    stock: Optional["StockLevel"] 
-    product: Optional[ProductModel]
+    # stock: Optional["StockLevelSchema"] 
+    # product: Optional[ProductModelSchema]
 
 class StockLevelSchema(BaseResponse):
     id: UUID | str
@@ -54,5 +51,5 @@ class StockLevelSchema(BaseResponse):
     created_at: datetime 
     updated_at: datetime 
     transactions: Optional[List[InventoryTransactionSchema]] 
-    product: Optional[ProductModel]
+    # product: Optional[ProductModelSchema]
 

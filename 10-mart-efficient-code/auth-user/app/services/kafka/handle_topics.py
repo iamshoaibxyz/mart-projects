@@ -63,63 +63,11 @@ async def verify_reset_password_user(proto_user):
     async with get_producer() as producer:
         user_proto = user_to_proto(user)
         await producer.send_and_wait("email-verify-reset-password-user-topic", user_proto.SerializeToString())
-        
 
-
-async def register_new_company(company_proto):
-    new_company = proto_to_company(company_proto)
+async def delete_user(proto_user):
+    user_model = proto_to_usermodel(proto_user)
     async with get_session() as session:
-        session.add(new_company)
-        session.commit()
-        session.refresh(new_company)
-    # send to kafka and then email recived then send to company email for verification
-    async with get_producer() as producer:
-        proto_company = company_to_proto(new_company)
-        await producer.send_and_wait("send-email-to-new-company-topic", proto_company.SerializeToString())
-
-async def verify_new_company(company_proto):
-    company_model = proto_to_company(company_proto)
-    async with get_session() as session:
-        # company = session.exec(select(CompanyModel).where(CompanyModel.id==company_model.id)).first()
-        company = session.get(CompanyModel, company_model.id)
-        company.is_verified = True
-        company.verified_at = datetime.now(timezone.utc)
-        company.updated_at = datetime.now(timezone.utc)
-        session.add(company)
-        session.commit()
-        session.refresh(company)
-    # send to kafka and then email-service will be recived
-    async with get_producer() as producer:
-        proto_company = company_to_proto(company)
-        await producer.send_and_wait("send-email-to-new-verify-company-topic", proto_company.SerializeToString())
-
-async def company_token(proto_company_token):
-    company_token = proto_to_company_token(proto_company_token)
-    async with get_session() as session:
-        company = session.get(CompanyModel, company_token.company_id)
-        company.tokens.append(company_token)
-        session.add(company)
+        user = session.get(UserModel, user_model.id)
+        session.delete(user)
         session.commit()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
-# engine = create_engine(connection_str)
-    # async def get_session():
-    #     with Session(engine) as session:
-    #         yield session

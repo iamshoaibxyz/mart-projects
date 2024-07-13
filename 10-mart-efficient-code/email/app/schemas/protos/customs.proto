@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package customs;
+
+message ProductWithInventory {
+    string name = 1;
+    string description = 2;
+    string category = 3;
+    float price = 4;
+    int32 stock = 5;
+    string company_id = 6;
+}
+
+
+message InventoryInfo {
+    string company_id = 1;
+    string product_id = 2;
+    int32 stock = 3;
+}
+
+message TransactionInfo {
+    string transaction_id = 1;
+}
+

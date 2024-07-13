@@ -35,12 +35,9 @@ async def get_session():
 async def lifespan(app: FastAPI):
     print("table creating")
     # create_database("mytestdatabase")
-    # SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
-    # asyncio.create_task(kafka_consumer("hello"))
-    asyncio.create_task(kafka_consumer("add-new-product-topic"))
-    # asyncio.create_task(kafka_consumer("register-new-user-topic"))
-    # asyncio.create_task(kafka_consumer("verify-new-user-topic"))
-    # asyncio.create_task(kafka_consumer("user-token-topic"))
+    asyncio.create_task(kafka_consumer("product-product-product-added"))
+    asyncio.create_task(kafka_consumer("product-product-product-and-inventory-added"))
+    asyncio.create_task(kafka_consumer("product_product_product_updated"))
     print("table created")
     yield

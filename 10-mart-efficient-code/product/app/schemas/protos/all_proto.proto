@@ -134,4 +134,16 @@ message InventoryTransaction {
     int32 quantity = 4;
     string timestamp = 5;
     Operation operation = 6;
+    Product product = 7 ;
+    StockLevel stock = 8;  
+}
+
+
+message ProductWithStock {
+    string name = 1;
+    string description = 2;
+    float price = 3;
+    string category = 4;
+    string company_id = 5;
+    int32 stock = 9;
 }

@@ -1,7 +1,7 @@
 from uuid import UUID
 from app.config.security import hashed_password, verify_hashed_password, hashed_url, verify_hashed_url, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from app.schemas.user import UserReq, UserAccountVerifyReq, UserToken, VerifyResetPasswordUserReq, UserBasicInfoRes, GetUserByEmailReq, GetUserByIdReq 
+from app.schemas.user import UserReq, UserAccountVerifyReq, UserToken, VerifyResetPasswordUserReq, UserBasicInfoRes, GetUserByEmailReq, GetUserByIdReq, UpdataUserProfileReq 
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.config.validation import validate_password
 from datetime import datetime, timedelta, timezone
@@ -141,3 +141,50 @@ async def about_user(token: Annotated[str, Depends(oauth2_scheme)], session: Ann
         return user
     except Exception as e:
         return {"error": str(e)}
+
+
+# @router.put("/update-profile")
+# async def update_profile(updated_data: UpdataUserProfileReq, token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
+#     try:
+#         decoded_token = decode_access_token(token)
+#         user_id = decoded_token.get("sub").get("id")        
+#         user = session.get(UserModel, UUID(user_id))
+#         if not user:
+#             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
+        
+#         user_email = session.exec(select(UserModel).where(UserModel.email == updated_data.email.lower())).first()
+#         if user_email and user_email.email != user.email:
+#             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user email {updated_data.email} is already used")
+        
+#         # Update the user details
+#         for key, value in updated_data.model_dump(exclude_unset=True).items():
+#             setattr(user, key, value)
+#         user.updated_at = datetime.now(timezone.utc)
+#         proto_user = user_to_proto(user)    
+#         async with get_producer() as producer:
+#             await producer.send_and_wait("update-user-topic", proto_user.SerializeToString())
+                
+#         return {"messsageg": "Profile updated successfully"}
+    
+#     except Exception as e:
+#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+ 
+
+
+@router.delete("/delete-user")
+async def delete_user(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
+    try:
+        user_data = decode_access_token(token)
+        id = user_data.get("sub").get("id")
+        user = session.get(UserModel, UUID(id))
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        proto_user = user_to_proto(user)    
+        async with get_producer() as producer:
+            await producer.send_and_wait("delete-user", proto_user.SerializeToString())
+                
+        return {"message": "user has successfully deleted"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+  

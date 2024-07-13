@@ -2,12 +2,13 @@ from contextlib import asynccontextmanager
 from app.config.settings import DATABASE_URL
 # from app.services.database.session import get_session
 from sqlmodel import Session, create_engine, select
-from app.utils.proto_utils import product_to_proto, proto_to_productmodel, proto_to_company, company_to_proto ,email_content_to_proto, email_to_proto, proto_to_email, proto_to_email_content, proto_to_usermodel
+from app.utils.proto_utils import proto_to_inventory_transaction, proto_to_productmodel, proto_to_company,  proto_to_user
 from app.services.kafka.producer import get_producer
 from datetime import datetime, timezone
-from app.models.all_models import UserModel, ProductModel, CompanyModel
+from app.models.all_models import UserModel, ProductModel, CompanyModel, InventoryTransaction, StockLevel
 from app.config.email import send_mail
 from app.config.security import hashed_url
+from uuid import UUID
 
 connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 engine = create_engine(connection_str)
@@ -22,7 +23,7 @@ async def get_session():
 # =================================user==================================
 
 async def email_to_unverified_user(user_proto):
-    user = proto_to_usermodel(user_proto)
+    user = proto_to_user(user_proto)
     context = str(user.get_context_str())
     hasded = hashed_url(context)
     email = user.email
@@ -34,7 +35,7 @@ async def email_to_unverified_user(user_proto):
     await send_mail(email=email, html=html)
 
 async def email_to_new_user(user_proto): 
-    user = proto_to_usermodel(user_proto)
+    user = proto_to_user(user_proto)
     context = str(user.get_context_str())
     hasded = hashed_url(context)
     email = user.email
@@ -45,8 +46,17 @@ async def email_to_new_user(user_proto):
             """
     await send_mail(email=email, html=html)
 
+async def email_to_new_verified_user(user_proto): 
+    user = proto_to_user(user_proto)
+    email = user.email
+    html = f"""
+            email: {email}
+            Congratulation '{user.first_name} {user.last_name}' is successfully verified.
+            """
+    await send_mail(email=email, html=html)
+
 async def email_to_reset_password_user(user_proto):
-    user_model: UserModel = proto_to_usermodel(user_proto)
+    user_model: UserModel = proto_to_user(user_proto)
     verify_context = user_model.get_context_str("VERIFY_USER_CONTEXT")
     token_url = hashed_url(verify_context)
     email = user_model.email
@@ -58,7 +68,7 @@ async def email_to_reset_password_user(user_proto):
     await send_mail(email=email, html=html)
 
 async def email_verify_reset_user_password(user_proto):
-    user_model: UserModel = proto_to_usermodel(user_proto)
+    user_model: UserModel = proto_to_user(user_proto)
     
     email = user_model.email
     html = f"""
@@ -84,7 +94,6 @@ async def email_to_new_company(company_proto):
 """
     await send_mail(email=email, html=html)
     
-
 async def verify_email_to_new_company(company_proto):
     company = proto_to_company(company_proto)
     email = company.email
@@ -95,7 +104,6 @@ async def verify_email_to_new_company(company_proto):
 """
     await send_mail(email=email, html=html)
     
-
 async def email_to_unverified_company(company_proto):
     company_model = proto_to_company(company_proto)
     url_context = company_model.get_context_str()
@@ -108,38 +116,6 @@ async def email_to_unverified_company(company_proto):
             '{name.capitalize()}' was not verified, this token will help you to verify the company
 """
     await send_mail(email=email, html=html)
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # async with get_session() as session:
-    #     session.add(new_user)
-    #     session.commit()
-    #     session.refresh(new_user)
-    # send to kafka and then email-service will be recived
-    # async with get_producer() as producer:
-    #     proto_user = user_to_proto(new_user)
-    #     await producer.send_and_wait("send-email-to-new-user-topic", proto_user.SerializeToString())
-
 
 async def email_to_reset_password_company(company_proto):
     company = proto_to_company(company_proto)
@@ -163,6 +139,33 @@ async def email_to_new_product_company(product_proto):
         email = company.email
         html = f"""
                 email: '{email}'
-                Congratulation product '{product.name.capitalize*()}' is successfully added by '{company.name.capitalize()}'  Company, please add inventory related detail"""
+                Congratulation product '{product.name.capitalize()}' is successfully added by '{company.name.capitalize()}'  Company, please add inventory related detail"""
+        await send_mail(email=email, html=html)
+
+
+async def email_to_updated_product_company(product_proto):
+    product = proto_to_productmodel(product_proto)
+    async with get_session() as session: 
+        company: CompanyModel = session.get(CompanyModel, product.company_id)
+        email = company.email
+        stock = session.exec(select(StockLevel).where(StockLevel.product_id==product.id)).first()
+        stock_content = (stock.current_stock if stock else "please add stock related detaild")
+        html = f"""
+                email: '{email}'
+                Congratulation product '{product.name.capitalize()}' is successfully updated by '{company.name.capitalize()}'  Company <br/> Product name: '{product.name.capitalize()}' <br/> Product Category: '{product.category.lower()}' <br/> Product price: '{product.price}' <br/> Current stock: {stock_content}  """
+        await send_mail(email=email, html=html)
+
+
+async def email_to_new_product_with_transaction(transaction_proto):
+    # transaction = proto_to_inventory_transaction(inventory_proto)
+    # product_id = transaction.product_id
+    async with get_session() as session:
+        transaction = session.get(InventoryTransaction, UUID(transaction_proto.transaction_id))
+        product = session.get(ProductModel, transaction.product_id)
+        company = session.get(CompanyModel, product.company_id)
+        email = company.email
+        html = f"""
+                email: '{email}'
+                Congratulation product '{product.name.capitalize()}' is successfully added by '{company.name.capitalize()}' <br/> Inventory:  '{transaction.quantity}' item  is also add <br/>"""
         await send_mail(email=email, html=html)
 

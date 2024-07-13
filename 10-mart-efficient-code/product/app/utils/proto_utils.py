@@ -105,8 +105,8 @@ def product_to_proto(product: ProductModel) -> all_proto_pb2.Product:
         product_ranking=product.product_ranking or 0.0,
         created_at=product.updated_at.isoformat(),
         updated_at=product.updated_at.isoformat() if product.updated_at else datetime.now(timezone.utc).isoformat(),
-        stock=stocklevel_to_proto(product.stock) if product.stock else None,
-        transactions=[inventory_transaction_to_proto(tx) for tx in product.transactions or []]
+        # stock=stocklevel_to_proto(product.stock) if product.stock else None,
+        # transactions=[inventory_transaction_to_proto(tx) for tx in product.transactions or []]
         # for comment in product.comments:
         #     product_proto.comments.append(comment_to_proto(comment))
         # for order in product.orders:
@@ -130,7 +130,18 @@ def proto_to_productmodel(proto: all_proto_pb2.Product) -> ProductModel:
         # product.orders = [proto_to_orderplacedmodel(order_proto) for order_proto in product_proto.orders]
     )
     return product
+
  
+def stocklevel_to_proto(stock: StockLevel) -> all_proto_pb2.StockLevel:
+    return all_proto_pb2.StockLevel(
+        id=str(stock.id),
+        product_id=str(stock.product_id),
+        current_stock=stock.current_stock,
+        created_at=stock.updated_at.isoformat(),
+        updated_at=stock.updated_at.isoformat() if stock.updated_at else datetime.now(timezone.utc).isoformat(),
+        transactions=[inventory_transaction_to_proto(tx) for tx in stock.transactions or []]
+    )
+  
 def proto_to_stocklevel(proto: all_proto_pb2.StockLevel) -> StockLevel:
     stock = StockLevel(
         id=UUID(proto.id),
@@ -142,20 +153,31 @@ def proto_to_stocklevel(proto: all_proto_pb2.StockLevel) -> StockLevel:
     )
     return stock
 
-def stocklevel_to_proto(stock: StockLevel) -> all_proto_pb2.StockLevel:
-    return all_proto_pb2.StockLevel(
-        id=str(stock.id),
-        product_id=str(stock.product_id),
-        current_stock=stock.current_stock,
-        created_at=stock.updated_at.isoformat(),
-        updated_at=stock.updated_at.isoformat() if stock.updated_at else datetime.now(timezone.utc).isoformat(),
-        transactions=[inventory_transaction_to_proto(tx) for tx in stock.transactions or []]
-    )
-
 class Operation(enum.Enum):
     ADD = "add"
     SUBTRACT = "subtract"
+ 
+def inventory_transaction_to_proto(transaction: InventoryTransaction) -> all_proto_pb2.InventoryTransaction:
+    operation_map = {
+        Operation.ADD: all_proto_pb2.InventoryTransaction.Operation.ADD,
+        Operation.SUBTRACT: all_proto_pb2.InventoryTransaction.Operation.SUBTRACT
+    }
+    
+    if transaction.operation not in operation_map:
+        raise ValueError(f"Unknown operation: {transaction.operation}")
+    
+    return all_proto_pb2.InventoryTransaction(
+        id=str(transaction.id),
+        stock_id=str(transaction.stock_id),
+        product_id=str(transaction.product_id),
+        quantity=transaction.quantity,
+        timestamp=transaction.timestamp.isoformat(),
+        operation=operation_map[transaction.operation],
+        stock=stocklevel_to_proto(transaction.stock) if transaction.stock else None,
+        product=product_to_proto(transaction.product) if transaction.product else None
+    )
 
+ 
 def proto_to_inventory_transaction(proto: all_proto_pb2.InventoryTransaction) -> InventoryTransaction:
     transaction = InventoryTransaction(
         id=UUID(proto.id),
@@ -163,20 +185,12 @@ def proto_to_inventory_transaction(proto: all_proto_pb2.InventoryTransaction) ->
         product_id=UUID(proto.product_id),
         quantity=proto.quantity,
         timestamp=datetime.fromisoformat(proto.timestamp),
-        operation=Operation(proto.operation.name.lower())
+        operation=Operation(proto.operation.name.lower()),
+        stock=proto_to_stocklevel(proto.stock) if proto.HasField("stock") else None,
+        product=proto_to_productmodel(proto.product) if proto.HasField("product") else None
     )
     return transaction
+
  
-def inventory_transaction_to_proto(transaction: InventoryTransaction) -> all_proto_pb2.InventoryTransaction:
-    return all_proto_pb2.InventoryTransaction(
-        id=str(transaction.id),
-        stock_id=str(transaction.stock_id),
-        product_id=str(transaction.product_id),
-        quantity=transaction.quantity,
-        timestamp=transaction.updated_at.isoformat(),
-        operation=Operation.Value(transaction.operation.value.upper())
-    )
-
-
 
 

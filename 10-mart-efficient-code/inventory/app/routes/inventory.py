@@ -9,7 +9,7 @@ from typing import Annotated
 from uuid import UUID
 from datetime import datetime, timezone
 
-from app.protobuf import all_proto_pb2
+from app.schemas.protos import all_proto_pb2
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"], responses={404:{"description": "Not found"}})
 
@@ -23,23 +23,26 @@ async def add_inventory(product_data: InventoryAddReq, session: Annotated[Sessio
     if not stock:
         stock = StockLevel(product_id=UUID(product_data.product_id), current_stock=0)
         session.add(stock)
-    stock.current_stock += product_data.quantity
+    stock.current_stock += int(product_data.quantity)
     stock.product = product_exist
-    
-    transaction = InventoryTransaction(stock_id=stock.id, product_id=product_exist.id, quantity=int(product_data.quantity), operation=Operation.ADD)
-    
-    stock.transactions.append(transaction)
     stock.updated_at = datetime.now(timezone.utc)
 
-    product_exist.transactions.append(transaction)
     product_exist.stock = stock
     product_exist.updated_at = datetime.now(timezone.utc)
+
+    stock_info = stock.model_copy()
+    transaction = InventoryTransaction(stock_id=stock_info.id, product_id=product_exist.id, quantity=int(product_data.quantity), operation=Operation.ADD, stock=stock, product=product_exist)
+    
+    stock.transactions.append(transaction)
+    product_exist.transactions.append(transaction)
 
     session.add(transaction)
     session.commit()
     session.refresh(product_exist)
     session.refresh(stock)
-    return {"message": "Stock added successfully", "product": product_exist, "stock": stock} 
+    session.refresh(transaction)
+
+    return {"message": "Stock added successfully", "transaction": transaction, "product_exist": product_exist, "stock": stock } 
 
 @router.post("/subtract-inventory")
 async def subtract_inventory(product_data: InventorySubtractReq, session: Annotated[Session, Depends(get_session)]):
@@ -70,6 +73,11 @@ async def subtract_inventory(product_data: InventorySubtractReq, session: Annota
     session.refresh(product_exist)
     session.refresh(stock)
     return {"message": "Stock Subtract successfully", "product": product_exist, "stock": stock} 
+
+@router.get("/get-all-stocks", response_model=list[StockLevelSchema])
+async def all_stocks(session: Annotated[Session, Depends(get_session)]):
+    stock = session.exec(select(StockLevel)).all()
+    return stock
 
 @router.get("/get-all-inventory-transactions", response_model=list[InventoryTransactionSchema])
 async def all_transactions(session: Annotated[Session, Depends(get_session)]):

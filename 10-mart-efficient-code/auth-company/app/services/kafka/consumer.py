@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from aiokafka import AIOKafkaConsumer
 from app.schemas.protobuf import company_pb2, company_token_pb2
-from app.services.kafka.handle_topics import update_company, verify_reset_password_company, register_new_company, verify_new_company, company_token
+from app.services.kafka.handle_topics import delete_company, update_company, verify_reset_password_company, register_new_company, verify_new_company, company_token
 
 @asynccontextmanager
 async def get_consumer(topic: str):
@@ -43,23 +43,12 @@ async def kafka_consumer(topic: str):
                 company_proto.ParseFromString(message.value) 
                 await update_company(company_proto)
 
-            # if topic == "register-new-user-topic":
-            #     user_proto = user_pb2.User()
-            #     user_proto.ParseFromString(message.value)
-            #     await register_new_user(user_proto)
-            # elif topic == "verify-new-user-topic":
-            #     user_verify_proto = user_pb2.User()
-            #     user_verify_proto.ParseFromString(message.value) 
-            #     await verify_new_user(user_verify_proto)
-            # elif topic == "user-token-topic":
-            #     user_token_proto = user_pb2.UserToken()
-            #     user_token_proto.ParseFromString(message.value)
-            #     await user_token(user_token_proto)
-            # elif topic == "verify-reset-password-user-topic":
-            #     user_token_proto = user_pb2.User()
-            #     user_token_proto.ParseFromString(message.value)
-            #     await verify_reset_password_user(user_token_proto)
+            elif topic == "delete-company":
+                company_proto = company_pb2.Company()
+                company_proto.ParseFromString(message.value) 
+                await delete_company(company_proto)
 
+            
             else:
                 raise HTTPException(status_code=500, detail=f"Internal Issue, topic {topic} not found")
             
