@@ -46,6 +46,7 @@ class UserModel(SQLModel, table=True):
     tokens: Optional[List["UserTokenModel"]] = Relationship(back_populates="user")
     orders: Optional[List["OrderPlacedModel"]] = Relationship(back_populates="user")
     comments: Optional[List["CommentModel"]] = Relationship(back_populates="user")
+    carts: Optional[List["CartModel"]] = Relationship(back_populates="user")
 
     def get_context_str(self, context: str = "USER_CONTEXT"):
         return f"{context}{self.password[-6:]}{self.updated_at.strftime('%Y%m%d%H%M%S')}"
@@ -98,7 +99,6 @@ class ProductModel(SQLModel, table=True):
     category: Optional[str] = Field(default="other")
     company_id: UUID = Field(foreign_key="company.id")
     product_ranking: Optional[float] = Field(default=0.0)
-    # stock: int = Field(default=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     company: Optional["CompanyModel"] = Relationship(back_populates="products")
@@ -107,31 +107,53 @@ class ProductModel(SQLModel, table=True):
     stock: Optional["StockLevel"] = Relationship(back_populates="product", sa_relationship_kwargs={"uselist": False})
     transactions: Optional[List["InventoryTransaction"]] = Relationship(back_populates="product")
 
+class CartStatus(str, Enum):
+    INITIALIZED = "initialized"
+    PENDING = "pending"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+    COMPLETED = "completed"
+
+class CartModel(SQLModel, table=True):
+    __tablename__ = 'cart'
+    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    status: CartStatus = Field(default=CartStatus.INITIALIZED)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    orders: List["OrderPlacedModel"] = Relationship(back_populates="cart")
+    total_price: float = Field(default=0.0)
+    user: Optional["UserModel"] = Relationship(back_populates="carts")
+
 class OrderStatus(str, Enum):
+    INITIALIZED = "initialized"
     PENDING = "pending"
     PROCESSING = "processing"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
-
+ 
 class OrderPlacedModel(SQLModel, table=True):
     __tablename__ = 'order'
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
-    user_id: UUID = Field(foreign_key="user.id")
-    product_id: UUID = Field(foreign_key="product.id")
+    cart_id: UUID = Field(foreign_key="cart.id", index=True)  # Add this field to link to CartModel
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    product_id: UUID = Field(foreign_key="product.id", index=True)
     product_price: float
     quantity: int
     total_price: float
     order_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     delivery_date: Optional[datetime] = None
     delivered: bool = Field(default=False)
-    status: OrderStatus = Field(default=OrderStatus.PENDING)
-    return_back: Optional[datetime] = None                  # can be return back within 7 days, after delivered 
+    status: OrderStatus = Field(default=OrderStatus.INITIALIZED)
+    return_back: Optional[datetime] = None
     delivery_address: str
-    user: Optional["UserModel"] = Relationship(back_populates="orders")
-    product: Optional["ProductModel"] = Relationship(back_populates="orders")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    user: Optional["UserModel"] = Relationship(back_populates="orders")
+    product: Optional["ProductModel"] = Relationship(back_populates="orders")
+    cart: Optional["CartModel"] = Relationship(back_populates="orders")
 
 class Operation(str, Enum):
     ADD = "add"
@@ -140,8 +162,8 @@ class Operation(str, Enum):
 class InventoryTransaction(SQLModel, table=True):
     __tablename__ = 'inventory_transaction'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    stock_id: UUID = Field(foreign_key="stocklevel.id")
-    product_id: UUID = Field(foreign_key="product.id")
+    stock_id: UUID = Field(foreign_key="stocklevel.id", index=True)
+    product_id: UUID = Field(foreign_key="product.id", index=True)
     quantity: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     operation: Operation
@@ -151,10 +173,10 @@ class InventoryTransaction(SQLModel, table=True):
 class StockLevel(SQLModel, table=True):
     __tablename__ = 'stocklevel'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    product_id: UUID = Field(foreign_key="product.id")
+    product_id: UUID = Field(foreign_key="product.id", unique=True, index=True)
     current_stock: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     transactions: Optional[List["InventoryTransaction"]] = Relationship(back_populates="stock")
     product: Optional["ProductModel"] = Relationship(back_populates="stock")
-
+    

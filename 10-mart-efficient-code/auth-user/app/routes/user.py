@@ -77,7 +77,7 @@ async def user_login(user: Annotated[Any, Depends(OAuth2PasswordRequestForm)] , 
     proto_user_token = user_token_to_proto(user_token)
     async with get_producer() as producer:
         await producer.send_and_wait("user-token-topic", proto_user_token.SerializeToString())
-        return UserToken(access_token=token, token_type="bearer", expires_in=str(token_expired_at)) # {"status": status.HTTP_200_OK, "message": "you have succcessfully login", "token": token, "user": user_exist}
+    return UserToken(access_token=token, token_type="bearer", expires_in=str(token_expired_at)) # {"status": status.HTTP_200_OK, "message": "you have succcessfully login", "token": token, "user": user_exist}
 
 @router.post("/reset-password-request")
 async def reset_user_password(email: EmailStr, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]

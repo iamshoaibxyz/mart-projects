@@ -151,9 +151,11 @@ def stocklevel_to_proto(stock: StockLevel) -> all_proto_pb2.StockLevel:
         updated_at=stock.updated_at.isoformat() if stock.updated_at else datetime.now(timezone.utc).isoformat(),
         transactions=[inventory_transaction_to_proto(tx) for tx in stock.transactions or []]
     )
+
 class Operation(enum.Enum):
     ADD = "add"
     SUBTRACT = "subtract"
+
 def proto_to_inventory_transaction(proto: all_proto_pb2.InventoryTransaction) -> InventoryTransaction:
     transaction = InventoryTransaction(
         id=UUID(proto.id),
@@ -175,6 +177,80 @@ def inventory_transaction_to_proto(transaction: InventoryTransaction) -> all_pro
         operation=Operation.Value(transaction.operation.value.upper())
     )
 
+from datetime import datetime
+from uuid import UUID
+from typing import List
+from my_models import CartModel, OrderPlacedModel, CartStatus, OrderStatus  # Your SQLModel classes
+import cart_order_pb2 as pb  # Generated Protobuf classes
+
+# Utility functions to convert datetime to/from ISO format string
+def datetime_to_iso(dt: datetime) -> str:
+    return dt.isoformat()
+
+def iso_to_datetime(iso_str: str) -> datetime:
+    return datetime.fromisoformat(iso_str)
+
+# Conversion from SQLModel to Protobuf
+def cartmodel_to_proto(cart: CartModel) -> pb.Cart:
+    return pb.Cart(
+        id=str(cart.id),
+        user_id=str(cart.user_id),
+        status=pb.CartStatus.Value(cart.status.name),
+        created_at=datetime_to_iso(cart.created_at),
+        updated_at=datetime_to_iso(cart.updated_at),
+        orders=[orderplacedmodel_to_proto(order) for order in cart.orders],
+        total_price=cart.total_price
+    )
+
+def orderplacedmodel_to_proto(order: OrderPlacedModel) -> pb.OrderPlaced:
+    return pb.OrderPlaced(
+        id=str(order.id),
+        cart_id=str(order.cart_id),
+        user_id=str(order.user_id),
+        product_id=str(order.product_id),
+        product_price=order.product_price,
+        quantity=order.quantity,
+        total_price=order.total_price,
+        order_date=datetime_to_iso(order.order_date),
+        delivery_date=datetime_to_iso(order.delivery_date) if order.delivery_date else "",
+        delivered=order.delivered,
+        status=pb.OrderStatus.Value(order.status.name),
+        return_back=datetime_to_iso(order.return_back) if order.return_back else "",
+        delivery_address=order.delivery_address,
+        created_at=datetime_to_iso(order.created_at),
+        updated_at=datetime_to_iso(order.updated_at)
+    )
+
+# Conversion from Protobuf to SQLModel
+def proto_to_cartmodel(cart_proto: pb.Cart) -> CartModel:
+    return CartModel(
+        id=UUID(cart_proto.id),
+        user_id=UUID(cart_proto.user_id),
+        status=CartStatus(cart_proto.status.name),
+        created_at=iso_to_datetime(cart_proto.created_at),
+        updated_at=iso_to_datetime(cart_proto.updated_at),
+        orders=[proto_to_orderplacedmodel(order) for order in cart_proto.orders],
+        total_price=cart_proto.total_price
+    )
+
+def proto_to_orderplacedmodel(order_proto: pb.OrderPlaced) -> OrderPlacedModel:
+    return OrderPlacedModel(
+        id=UUID(order_proto.id),
+        cart_id=UUID(order_proto.cart_id),
+        user_id=UUID(order_proto.user_id),
+        product_id=UUID(order_proto.product_id),
+        product_price=order_proto.product_price,
+        quantity=order_proto.quantity,
+        total_price=order_proto.total_price,
+        order_date=iso_to_datetime(order_proto.order_date),
+        delivery_date=iso_to_datetime(order_proto.delivery_date) if order_proto.delivery_date else None,
+        delivered=order_proto.delivered,
+        status=OrderStatus(order_proto.status.name),
+        return_back=iso_to_datetime(order_proto.return_back) if order_proto.return_back else None,
+        delivery_address=order_proto.delivery_address,
+        created_at=iso_to_datetime(order_proto.created_at),
+        updated_at=iso_to_datetime(order_proto.updated_at)
+    )
 
 
 

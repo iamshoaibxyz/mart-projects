@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlmodel import Session, select, create_engine
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from app.schemas import user
+from app.schemas import order
 from app.config.database import DATABASE_URL
 
 connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")

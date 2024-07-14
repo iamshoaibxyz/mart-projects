@@ -1,12 +1,10 @@
-# from fastapi import APIRouter, HTTPException, status, Depends
-# from sqlmodel import SQLModel, select, Session
-# from app.schemas.user import UserReq, UserRes
-# from app.models.user import UserModel
-# from app.config.kafka import get_producer
-# from app.config.database import get_session
-# from aiokafka import AIOKafkaProducer
-# from typing import Annotated
-# from app.protobuf import user_pb2
+from fastapi import APIRouter, HTTPException, status, Depends
+from sqlmodel import SQLModel, select, Session
+from app.models.all_models import UserModel
+from app.config.kafka import get_producer
+from app.config.database import get_session
+from aiokafka import AIOKafkaProducer
+from typing import Annotated
 
 # router = APIRouter(prefix="/user", tags=["User Auth"], responses={404:{"description": "Not found"}})
 

@@ -72,29 +72,33 @@ message EmailContent {
     string email_id = 3;
 }
 
+// OrderStatus Enum
 enum OrderStatus {
-    PENDING = 0;
-    PROCESSING = 1;
-    SHIPPED = 2;
-    DELIVERED = 3;
-    CANCELLED = 4;
+    INITIALIZED = 0;
+    PENDING = 1;
+    PROCESSING = 2;
+    SHIPPED = 3;
+    DELIVERED = 4;
+    CANCELLED = 5;
 }
 
+// OrderPlaced message
 message OrderPlaced {
     string id = 1;
-    string user_id = 2;
-    string product_id = 3;
-    float product_price = 4;
-    int32 quantity = 5;
-    float total_price = 6;
-    string order_date = 7; // ISO 8601 format
-    string delivery_date = 8; // ISO 8601 format
-    bool delivered = 9;
-    OrderStatus status = 10;
-    string return_back = 11; // ISO 8601 format
-    string delivery_address = 12;
-    string created_at = 13; // ISO 8601 format
-    string updated_at = 14; // ISO 8601 format
+    string cart_id = 2;
+    string user_id = 3;
+    string product_id = 4;
+    float product_price = 5;
+    int32 quantity = 6;
+    float total_price = 7;
+    string order_date = 8;
+    string delivery_date = 9;
+    bool delivered = 10;
+    OrderStatus status = 11;
+    string return_back = 12;
+    string delivery_address = 13;
+    string created_at = 14;
+    string updated_at = 15;
 }
 
 enum Operation {
@@ -138,7 +142,6 @@ message InventoryTransaction {
     StockLevel stock = 8;  
 }
 
-
 message ProductWithStock {
     string id = 1;
     string name = 2;
@@ -151,3 +154,24 @@ message ProductWithStock {
     string updated_at = 9;
     string stock = 10;
 }
+
+// CartStatus Enum
+//enum CartStatus {
+//    INITIALIZED = 0;
+//    PENDING = 1;
+//    PAID = 2;
+//    CANCELLED = 3;
+//    COMPLETED = 4;
+//}
+
+// Cart message
+message Cart {
+    string id = 1;
+    string user_id = 2;
+    string status = 3;
+    string created_at = 4;
+    string updated_at = 5;
+    repeated OrderPlaced orders = 6;
+    float total_price = 7;
+}
+

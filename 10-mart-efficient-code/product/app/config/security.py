@@ -27,26 +27,37 @@ def verify_hashed_url(db_url: str, user_url: str) -> bool:
         print(f"Error decoding token: {str(e)}")
         return False
 
-# def verify_hashed_url(db_url: str, user_url: str):
-#     try:
-#         decoded_hashed = base64.urlsafe_b64decode(user_url).decode("utf-8")
-#         return pwd_context.verify(db_url, decoded_hashed)
-#     except Exception as e:
-#         print(f"Error decoding token: {str(e)}")
-#         return {"error": str(e)}
 
 def create_access_token(payload: dict):
     token_expiry = datetime.now(timezone.utc) + timedelta(minutes= float(TOKEN_EXPIRY) )
     to_encode = {"exp": token_expiry, "sub": payload} 
     return jwt.encode(to_encode, SECRET_TOKEN, TOKEN_ALGROITHM)
+    
+def decode_access_token(token: str):
+    """
+    Decodes a JWT access token.
 
-def decode_access_token(token):
+    Args:
+        token (str): The JWT token to decode.
+
+    Returns:
+        dict: The decoded token payload.
+
+    Raises:
+        HTTPException: If the token is expired, invalid, or any other JWT-related error occurs.
+    """
     try:
+        # Decode the token using the secret key and the specified algorithm
         return jwt.decode(token, SECRET_TOKEN, algorithms=[TOKEN_ALGROITHM])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except jwt.ExpiredSignatureError as e:
+        # Token has expired
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+    except jwt.InvalidTokenError as e:
+        # Token is invalid
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
+    except jwt.PyJWTError as e:
+        # General JWT error
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token error")
     except Exception as e:
-        return {"error": str(e)}
+        # Any other exception
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
