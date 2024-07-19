@@ -1,16 +1,16 @@
 from contextlib import asynccontextmanager
-from app.config.settings import DATABASE_URL
-# from app.services.database.session import get_session
+import json
 from sqlmodel import Session, create_engine, select
-from app.utils.proto_utils import  proto_to_productmodel, inventory_transaction_to_proto
-from app.services.kafka.producer import get_producer
 from datetime import datetime, timezone
-from app.models.all_models import CompanyModel, ProductModel, InventoryTransaction, StockLevel, Operation
 from uuid import UUID
-from app.schemas.protos import customs_pb2
 from typing import Any
+from app.utils.proto_conversion import  inventory_transaction_to_proto
+from app.config.settings import INVENTORY_DATABASE_URL
+from app.services.kafka.producer import get_producer
+from app.models.inventory import InventoryTransaction, StockLevel
+from app.schemas.protos import customs_pb2
 
-connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
+connection_str = str(INVENTORY_DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 engine = create_engine(connection_str)
 
 @asynccontextmanager
@@ -19,29 +19,56 @@ async def get_session():
         yield session
 
 async def add_new_inventory_stock(stock_proto):
-    # transaction_info: Any
-    async with get_session() as session:
-        stock = StockLevel(product_id=UUID(stock_proto.product_id), current_stock=int(stock_proto.stock))
-        transaction  = InventoryTransaction(stock_id=stock.id, product_id=stock.product_id, quantity=int(stock_proto.stock), operation=Operation.ADD )
-        product = session.get(ProductModel, stock.product_id)
-        
-        transaction.product = product
-        transaction.stock = stock
-        stock.product = product
-        stock.transactions.append(transaction)
-        session.add(stock)
-        session.add(transaction)
+    try:
+        transaction_info: Any
+        async with get_session() as session:
+            stock = session.exec(select(StockLevel).where(StockLevel.product_id == UUID(stock_proto.product_id))).first()
+            if not stock:
+                stock = StockLevel(product_id=UUID(stock_proto.product_id), current_stock=0)
+                session.add(stock)
+            transaction  = InventoryTransaction(stock_id=stock.id, product_id=stock.product_id, quantity=int(stock_proto.stock), operation="add" )
+            session.add(transaction)
+            
+            stock.current_stock += transaction.quantity
 
-        product.transactions.append(transaction)
+            session.commit() 
+            session.refresh(stock)
+            session.refresh(transaction)
+            transaction_info = transaction.model_copy()
 
-        session.commit() 
-        session.refresh(product)
-        session.refresh(stock)
-        session.refresh(transaction)
-        # transaction_info = transaction.model_copy() 
+        async with get_producer() as producer:
+            transaction_proto = inventory_transaction_to_proto(transaction_info)
+            await producer.send_and_wait("email-transaction-added", transaction_proto.SerializeToString())
+    except Exception as e:
+        async with get_producer() as producer:
+            string_error = f"{str(e)}, something went wrong during initiolizing stock and transaction"
+            error = json.dumps(string_error).encode("utf-8")
+            await producer.send_and_wait("error", error.SerializeToString())
 
-    async with get_producer() as producer:
-        await producer.send_and_wait("hello", b" inventory transaction ")
-        transaction_proto = customs_pb2.TransactionInfo(transaction_id=str(transaction.id))
-        await producer.send_and_wait("inventory-email-transaction-added", transaction_proto.SerializeToString())
-        # await producer.send_and_wait("hello", transaction_info.model_dump_json().encode("utf-8") )
+
+
+async def subtract_inventory_stock(stock_proto):
+    try:
+        transaction_info: Any
+        async with get_session() as session:
+            stock = session.exec(select(StockLevel).where(StockLevel.product_id == UUID(stock_proto.product_id))).first()
+            transaction  = InventoryTransaction(stock_id=stock.id, product_id=stock.product_id, quantity=int(stock_proto.stock), operation="subtract" )
+            session.add(transaction)
+            
+            stock.current_stock -= transaction.quantity
+
+            session.commit() 
+            session.refresh(stock)
+            session.refresh(transaction)
+            transaction_info = transaction.model_copy()
+
+        async with get_producer() as producer:
+            transaction_proto = inventory_transaction_to_proto(transaction_info)
+            await producer.send_and_wait("email-transaction-subtracted", transaction_proto.SerializeToString())
+    except Exception as e:
+        async with get_producer() as producer:
+            string_error = f"{str(e)}, something went wrong during subtracting stock"
+            error = json.dumps(string_error).encode("utf-8")
+            await producer.send_and_wait("error", error.SerializeToString())
+
+

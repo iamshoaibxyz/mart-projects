@@ -2,6 +2,7 @@ from sqlmodel import create_engine, Session, SQLModel
 from app.config.settings import DATABASE_URL
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from sqlalchemy import text
 
 connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 

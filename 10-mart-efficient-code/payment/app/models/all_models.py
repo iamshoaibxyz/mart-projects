@@ -1,11 +1,10 @@
 from pydantic import EmailStr
 from sqlalchemy import TEXT, Column
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List 
+from typing import Optional, List, Literal
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from enum import Enum
- 
+
 class CompanyModel(SQLModel, table=True):
     __tablename__ = 'company'
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
@@ -28,8 +27,8 @@ class CompanyTokenModel(SQLModel, table=True):
     id : UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     company_id: Optional[UUID] = Field(None, foreign_key="company.id")
     token: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False )
-    expired_at: datetime = Field(nullable=False) 
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    expired_at: datetime = Field(nullable=False)
     company: Optional["CompanyModel"] = Relationship(back_populates="tokens")
 
 class UserModel(SQLModel, table=True):
@@ -56,8 +55,8 @@ class UserTokenModel(SQLModel, table=True):
     id : UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: Optional[UUID] = Field(None, foreign_key="user.id")
     token: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False )
-    expired_at: datetime = Field(nullable=False) 
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    expired_at: datetime = Field(nullable=False)
     user: "UserModel" = Relationship(back_populates="tokens")
 
 class CommentModel(SQLModel, table=True):
@@ -79,7 +78,7 @@ class Email(SQLModel, table=True):
     subject: str = Field(nullable=False)
     sent_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = Field(nullable=False)
-    
+
     contents: List["EmailContent"] = Relationship(back_populates="email")
 
 class EmailContent(SQLModel, table=True):
@@ -87,9 +86,9 @@ class EmailContent(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     content: str = Field(sa_column=Column(TEXT, nullable=False))
     email_id: UUID = Field(foreign_key='email.id')
-    
+
     email: "Email" = Relationship(back_populates="contents")
- 
+
 class ProductModel(SQLModel, table=True):
     __tablename__ = 'product'
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
@@ -107,32 +106,21 @@ class ProductModel(SQLModel, table=True):
     stock: Optional["StockLevel"] = Relationship(back_populates="product", sa_relationship_kwargs={"uselist": False})
     transactions: Optional[List["InventoryTransaction"]] = Relationship(back_populates="product")
 
-class CartStatus(str, Enum):
-    INITIALIZED = "initialized"
-    PENDING = "pending"
-    PAID = "paid"
-    CANCELLED = "cancelled"
-    COMPLETED = "completed"
+CartStatus = Literal["initialized", "pending", "paid", "cancelled", "completed"]
 
 class CartModel(SQLModel, table=True):
     __tablename__ = 'cart'
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     user_id: UUID = Field(foreign_key="user.id", index=True)
-    status: CartStatus = Field(default=CartStatus.INITIALIZED)
+    status: str #CartStatus
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     orders: List["OrderPlacedModel"] = Relationship(back_populates="cart")
     total_price: float = Field(default=0.0)
     user: Optional["UserModel"] = Relationship(back_populates="carts")
 
-class OrderStatus(str, Enum):
-    INITIALIZED = "initialized"
-    PENDING = "pending"
-    PROCESSING = "processing"
-    SHIPPED = "shipped"
-    DELIVERED = "delivered"
-    CANCELLED = "cancelled"
- 
+OrderStatus = Literal["initialized", "pending", "processing", "shipped", "delivered", "cancelled"]
+
 class OrderPlacedModel(SQLModel, table=True):
     __tablename__ = 'order'
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
@@ -145,9 +133,9 @@ class OrderPlacedModel(SQLModel, table=True):
     order_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     delivery_date: Optional[datetime] = None
     delivered: bool = Field(default=False)
-    status: OrderStatus = Field(default=OrderStatus.INITIALIZED)
+    status: str #OrderStatus
     return_back: Optional[datetime] = None
-    delivery_address: str
+    delivery_address: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -155,9 +143,7 @@ class OrderPlacedModel(SQLModel, table=True):
     product: Optional["ProductModel"] = Relationship(back_populates="orders")
     cart: Optional["CartModel"] = Relationship(back_populates="orders")
 
-class Operation(str, Enum):
-    ADD = "add"
-    SUBTRACT = "subtract"
+Operation = Literal["add", "subtract"]
 
 class InventoryTransaction(SQLModel, table=True):
     __tablename__ = 'inventory_transaction'
@@ -166,7 +152,7 @@ class InventoryTransaction(SQLModel, table=True):
     product_id: UUID = Field(foreign_key="product.id", index=True)
     quantity: int
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    operation: Operation
+    operation: str #Operation
     stock: Optional["StockLevel"] = Relationship(back_populates="transactions")
     product: Optional["ProductModel"] = Relationship(back_populates="transactions")
 
@@ -174,8 +160,9 @@ class StockLevel(SQLModel, table=True):
     __tablename__ = 'stocklevel'
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     product_id: UUID = Field(foreign_key="product.id", unique=True, index=True)
-    current_stock: int = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    quantity: int
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    transactions: Optional[List["InventoryTransaction"]] = Relationship(back_populates="stock")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
     product: Optional["ProductModel"] = Relationship(back_populates="stock")
+    transactions: List["InventoryTransaction"] = Relationship(back_populates="stock")

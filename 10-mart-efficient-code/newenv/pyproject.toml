@@ -20,6 +20,7 @@ pyjwt = "^2.8.0"
 httpx = "^0.27.0"
 psycopg2 = "^2.9.9"
 stripe = "^10.3.0"
+alembic = "^1.13.2"
 
 
 [build-system]

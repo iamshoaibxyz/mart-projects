@@ -5,7 +5,7 @@ config = ConnectionConfig(
     MAIL_USERNAME="username", 
     MAIL_PASSWORD="12345", 
     MAIL_FROM="iamshoaib@test.com", 
-    MAIL_FROM_NAME="Full Stack Auth App", 
+    MAIL_FROM_NAME="Mart App", 
     MAIL_PORT=1025,
     MAIL_SERVER="smtpContainer",
     MAIL_STARTTLS=False,
@@ -14,15 +14,10 @@ config = ConnectionConfig(
     VALIDATE_CERTS=True
     )
 
-# app = FastAPI()
-
-# html = """
-# <p> Thanks for using fastapi-mail </p>
-# """
 fm = FastMail(config)
 
-async def send_mail(email:str, html: str):
-    message = MessageSchema(subject="Fastapi Mail Module", recipients=[email], body=html, subtype=MessageType.html,  )
+async def send_mail(email:str, html: str, subject: str = "Fastapi Mail Module"):
+    message = MessageSchema(subject=subject, recipients=[email], body=html, subtype=MessageType.html,  )
 
     await fm.send_message(message)
     return {"email": "email has been sent!"}

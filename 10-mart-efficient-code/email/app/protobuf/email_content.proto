@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package email_content;
-
-message EmailContent {
-    string id = 1;
-    string content = 2;
-    string email_id = 3;
-}

@@ -1,10 +1,9 @@
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from typing import Optional, List
 from enum import Enum
-from pydantic import BaseModel, EmailStr, ConfigDict
-from app.models.all_models import ProductModel, StockLevel
+from pydantic import BaseModel, ConfigDict
+from app.models.product import ProductModel
 
 class BaseResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
@@ -33,6 +32,10 @@ class ProductGetByIdReq(BaseModel):
 
 class ProductsGetByCompanyIdReq(BaseModel):
     id : str
+
+class ProductsGetByProductAndCompanyIdReq(BaseModel):
+    product_id : str
+    company_id : str
 
 class CompanyTokenSchema(BaseResponse):
     id: UUID
@@ -82,7 +85,6 @@ class InventoryTransactionSchema(BaseResponse):
     updated_at: datetime 
     product: ProductModel
     operation: Operation
-    stock: Optional["StockLevel"] 
     product: Optional[ProductModel]
 
 class StockLevelSchema(BaseResponse):

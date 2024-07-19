@@ -1,18 +1,17 @@
 from contextlib import asynccontextmanager
-from app.config.settings import DATABASE_URL
-# from app.services.database.session import get_session
-from sqlmodel import Session, create_engine, select
-from app.utils.proto_utils import  proto_to_productmodel, product_to_proto, stocklevel_to_proto, inventory_transaction_to_proto
-from app.services.kafka.producer import get_producer
-from app.schemas.protos import customs_pb2
-from datetime import datetime, timezone
-from app.models.all_models import CompanyModel, ProductModel, InventoryTransaction, StockLevel, Operation
+from sqlmodel import Session, create_engine
 from uuid import UUID
 import logging
 import json
 
+from app.config.settings import PRODUCT_DATABASE_URL
+from app.services.kafka.producer import get_producer
+from app.schemas.protos import customs_pb2
+from app.models.product import ProductModel
+from app.utils.proto_conversion import proto_to_product 
+
 logger = logging.getLogger(__name__)
-connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
+connection_str = str(PRODUCT_DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 engine = create_engine(connection_str)
 
 @asynccontextmanager
@@ -21,18 +20,16 @@ async def get_session():
         yield session
 
 async def add_new_product(product_proto):
-    new_product = proto_to_productmodel(product_proto)
+    new_product = proto_to_product(product_proto)
     async with get_session() as session:
-        company = session.get(CompanyModel, new_product.company_id)
-        company.products.append(new_product)
-        session.add(company)
+        session.add(new_product)
         session.commit() 
-        session.refresh(company)
+        session.refresh(new_product)
     async with get_producer() as producer:
-        await producer.send_and_wait("product-email-product-added", product_proto.SerializeToString())
+        await producer.send_and_wait("email-product-added", product_proto.SerializeToString())
 
 async def update_product(product_proto):
-    updated_product = proto_to_productmodel(product_proto)
+    updated_product = proto_to_product(product_proto)
     async with get_session() as session:
         product = session.get(ProductModel, updated_product.id)
         product.sqlmodel_update(updated_product)
@@ -46,11 +43,9 @@ async def add_new_product_with_inventory(product_proto):
     product = ProductModel(name=product_proto.name, description=product_proto.description, price=float(product_proto.price), category=product_proto.category, company_id=UUID(product_proto.company_id))
     product_info = product.model_copy()
     async with get_session() as session:
-        company = session.get(CompanyModel, product.company_id)
-        company.products.append(product)
-        session.add(company) 
+        session.add(product) 
         session.commit() 
-        session.refresh(company)
+        session.refresh(product)
 
     async with get_producer() as producer:
         await producer.send_and_wait("hello", b"product added")

@@ -8,6 +8,14 @@ app : FastAPI = FastAPI(lifespan=lifespan, title="inventry", servers=[{
     "url": "http://127.0.0.1:8006",
     "description": "Development server"
 }])
+ 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*",],  # Or specify the domain of your Swagger UI
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():

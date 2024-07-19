@@ -9,10 +9,10 @@ message Company {
     string email = 4;
     string password = 5;
     bool is_verified = 6;
-    string verified_at = 7; // ISO 8601 format
-    repeated CompanyToken tokens = 8;
-    string created_at = 9; // ISO 8601 format
-    string updated_at = 10; // ISO 8601 format
+    string verified_at = 7;
+    string created_at = 8;
+    string updated_at = 9;
+    repeated CompanyToken tokens = 10;
     repeated Product products = 11;
 }
 
@@ -31,12 +31,13 @@ message User {
     string password = 4;
     string email = 5;
     bool is_verified = 6;
-    string verified_at = 7; // ISO 8601 format
-    string updated_at = 8; // ISO 8601 format
-    string created_at = 9; // ISO 8601 format
+    string verified_at = 7;
+    string created_at = 8;
+    string updated_at = 9;
     repeated UserToken tokens = 10;
-    repeated OrderPlaced orders = 11;
+    repeated Order orders = 11;
     repeated Comment comments = 12;
+    repeated Cart carts = 13;
 }
 
 message UserToken {
@@ -72,36 +73,6 @@ message EmailContent {
     string email_id = 3;
 }
 
-enum OrderStatus {
-    PENDING = 0;
-    PROCESSING = 1;
-    SHIPPED = 2;
-    DELIVERED = 3;
-    CANCELLED = 4;
-}
-
-message OrderPlaced {
-    string id = 1;
-    string user_id = 2;
-    string product_id = 3;
-    float product_price = 4;
-    int32 quantity = 5;
-    float total_price = 6;
-    string order_date = 7; // ISO 8601 format
-    string delivery_date = 8; // ISO 8601 format
-    bool delivered = 9;
-    OrderStatus status = 10;
-    string return_back = 11; // ISO 8601 format
-    string delivery_address = 12;
-    string created_at = 13; // ISO 8601 format
-    string updated_at = 14; // ISO 8601 format
-}
-
-enum Operation {
-    ADD = 0;
-    SUBTRACT = 1;
-}
-    
 message Product {
     string id = 1;
     string name = 2;
@@ -112,19 +83,38 @@ message Product {
     float product_ranking = 7;
     string created_at = 8;
     string updated_at = 9;
-    StockLevel stock = 10;
-    repeated Comment comments = 11;
-    repeated OrderPlaced orders = 12;
+    repeated Comment comments = 10;
+    repeated Order orders = 11;
+    StockLevel stock = 12;
     repeated InventoryTransaction transactions = 13;
 }
 
-message StockLevel {
+message Cart {
     string id = 1;
-    string product_id = 2;
-    int32 current_stock = 3;
+    string user_id = 2;
+    string status = 3;
     string created_at = 4;
     string updated_at = 5;
-    repeated InventoryTransaction transactions = 6;
+    float total_price = 6;
+    repeated Order orders = 7;
+}
+
+message Order {
+    string id = 1;
+    string cart_id = 2;
+    string user_id = 3;
+    string product_id = 4;
+    float product_price = 5;
+    int32 quantity = 6;
+    float total_price = 7;
+    string order_date = 8;
+    string delivery_date = 9;
+    bool delivered = 10;
+    string status = 11;
+    string return_back = 12;
+    string delivery_address = 13;
+    string created_at = 14;
+    string updated_at = 15;
 }
 
 message InventoryTransaction {
@@ -133,11 +123,19 @@ message InventoryTransaction {
     string product_id = 3;
     int32 quantity = 4;
     string timestamp = 5;
-    Operation operation = 6;
+    string operation = 6;
     Product product = 7 ;
     StockLevel stock = 8;  
 }
 
+message StockLevel {
+    string id = 1;
+    string product_id = 2;
+    int32 quantity = 3;
+    string updated_at = 4;
+    string created_at = 5;
+    repeated InventoryTransaction transactions = 6;
+}
 
 message ProductWithStock {
     string id = 1;

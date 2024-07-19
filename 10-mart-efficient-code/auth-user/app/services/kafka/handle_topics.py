@@ -1,11 +1,10 @@
 from contextlib import asynccontextmanager
 from app.config.settings import DATABASE_URL
-# from app.services.database.session import get_session
 from sqlmodel import Session, create_engine, select
-from app.utils.proto_utils import proto_to_usermodel, user_to_proto, proto_to_user_token, proto_to_company, company_to_proto, proto_to_company_token
+from app.utils.proto_conversion import proto_to_user, user_to_proto, proto_to_user_token
 from app.services.kafka.producer import get_producer
 from datetime import datetime, timezone
-from app.models.all_models import UserModel, UserTokenModel, CompanyModel
+from app.models.user import UserModel, UserTokenModel
 
 connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 engine = create_engine(connection_str)
@@ -16,18 +15,16 @@ async def get_session():
         yield session
 
 async def register_new_user(user_proto):
-    new_user = proto_to_usermodel(user_proto)
+    new_user = proto_to_user(user_proto)
     async with get_session() as session:
         session.add(new_user)
         session.commit()
         session.refresh(new_user)
-    # send to kafka and then email-service will be recived
     async with get_producer() as producer:
-        proto_user = user_to_proto(new_user)
-        await producer.send_and_wait("email-to-new-user-topic", proto_user.SerializeToString())
+        await producer.send_and_wait("email-user-added", user_proto.SerializeToString())
 
 async def verify_new_user(user_proto):
-    user_model = proto_to_usermodel(user_proto)
+    user_model = proto_to_user(user_proto)
     async with get_session() as session:
         user = session.get(UserModel, user_model.id)
         user.is_verified = True
@@ -38,13 +35,14 @@ async def verify_new_user(user_proto):
         session.refresh(user)
     # send to kafka and then email-service will be recived
     async with get_producer() as producer:
-        proto_user = user_to_proto(user)
-        await producer.send_and_wait("email-to-new-verified-user-topic", proto_user.SerializeToString())
-
+        await producer.send_and_wait("email-user-verified-updated", user_proto.SerializeToString())
+ 
 async def user_token(proto_user_token):
-    user_token: UserTokenModel = proto_to_user_token(proto_user_token)
+    user_token = proto_to_user_token(proto_user_token)
     async with get_session() as session:
+        session.add(user_token)
         user: UserModel = session.get(UserModel, user_token.user_id)
+        user_token.user = user
         user.tokens.append(user_token)
         session.add(user)
         session.commit()
@@ -52,7 +50,7 @@ async def user_token(proto_user_token):
         
 
 async def verify_reset_password_user(proto_user):
-    user_model: UserModel = proto_to_usermodel(proto_user)
+    user_model = proto_to_user(proto_user)
     async with get_session() as session:
         user: UserModel = session.get(UserModel, user_model.id)
         user.password = user_model.password
@@ -61,13 +59,14 @@ async def verify_reset_password_user(proto_user):
         session.commit()
         session.refresh(user)
     async with get_producer() as producer:
-        user_proto = user_to_proto(user)
-        await producer.send_and_wait("email-verify-reset-password-user-topic", user_proto.SerializeToString())
+        await producer.send_and_wait("email-user-password-updated", proto_user.SerializeToString())
 
 async def delete_user(proto_user):
-    user_model = proto_to_usermodel(proto_user)
+    user_model = proto_to_user(proto_user)
     async with get_session() as session:
         user = session.get(UserModel, user_model.id)
         session.delete(user)
         session.commit()
+    async with get_producer() as producer:
+        await producer.send_and_wait("email-user-deleted", proto_user.SerializeToString())
 

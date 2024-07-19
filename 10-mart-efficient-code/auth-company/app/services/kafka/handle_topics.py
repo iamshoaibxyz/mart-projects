@@ -1,14 +1,12 @@
 from contextlib import asynccontextmanager
-from app.config.settings import DATABASE_URL
-# from app.services.database.session import get_session
-from sqlmodel import Session, create_engine, select
-from app.utils.proto_utils import proto_to_usermodel, user_to_proto, proto_to_user_token, proto_to_company, company_to_proto, proto_to_company_token
+from app.config.settings import COMPANY_DATABASE_URL
+from sqlmodel import Session, create_engine
+from app.utils.proto_conversion import  proto_to_company_token, proto_to_company, company_to_proto
 from app.services.kafka.producer import get_producer
 from datetime import datetime, timezone
-from app.models.all_models import UserModel, UserTokenModel, CompanyModel
-from uuid import UUID
+from app.models.company import  CompanyModel
 
-connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
+connection_str = str(COMPANY_DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 engine = create_engine(connection_str)
 
 @asynccontextmanager
@@ -22,10 +20,9 @@ async def register_new_company(company_proto):
         session.add(new_company)
         session.commit() 
         session.refresh(new_company)
-    # send to kafka and then email recived then send to company email for verification
     async with get_producer() as producer:
-        # proto_company = company_to_proto(new_company)
-        await producer.send_and_wait("email-to-new-company-topic", company_proto.SerializeToString())
+        proto_company = company_to_proto(new_company)
+        await producer.send_and_wait("email-company-added", proto_company.SerializeToString())
 
 async def verify_new_company(company_proto):
     company_model = proto_to_company(company_proto)
@@ -37,19 +34,19 @@ async def verify_new_company(company_proto):
         session.add(company)
         session.commit()
         session.refresh(company)
-    # send to kafka and then email-service will be recived
     async with get_producer() as producer:
-        proto_company = company_to_proto(company)
-        await producer.send_and_wait("email-to-new-verify-company-topic", proto_company.SerializeToString())
-
+        await producer.send_and_wait("email-company-verified-updated", company_proto.SerializeToString())
+ 
 async def company_token(proto_company_token):
     company_token = proto_to_company_token(proto_company_token)
     async with get_session() as session:
+        session.add(company_token)
         company = session.get(CompanyModel, company_token.company_id)
+        company_token.company = company
         company.tokens.append(company_token)
         session.add(company)
         session.commit()
-
+ 
 async def verify_reset_password_company(proto_company):
     company_model = proto_to_company(proto_company)
     async with get_session() as session:
@@ -59,7 +56,7 @@ async def verify_reset_password_company(proto_company):
         session.add(company)
         session.commit()
         session.refresh(company)
-
+ 
 async def update_company(proto_company):
     company_model = proto_to_company(proto_company)
     async with get_session() as session:
@@ -70,6 +67,9 @@ async def update_company(proto_company):
         session.add(company)
         session.commit()
         session.refresh(company)
+    async with get_producer() as producer:
+        await producer.send_and_wait("email-company-info-updated", proto_company.SerializeToString())
+ 
 
 async def delete_company(proto_company):
     company_model = proto_to_company(proto_company)
@@ -77,3 +77,6 @@ async def delete_company(proto_company):
         company: CompanyModel = session.get(CompanyModel, company_model.id)
         session.delete(company)
         session.commit()
+    async with get_producer() as producer:
+        await producer.send_and_wait("email-company-deleted", proto_company.SerializeToString())
+ 

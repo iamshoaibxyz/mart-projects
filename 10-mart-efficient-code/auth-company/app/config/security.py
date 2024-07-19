@@ -1,13 +1,11 @@
+from app.config.settings import SECRET_TOKEN, TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, TOKEN_ALGROITHM
 from datetime import datetime, timedelta, timezone
-
 from fastapi import HTTPException, status
-from app.config.settings import SECRET_TOKEN, TOKEN_EXPIRY, TOKEN_ALGROITHM
-import base64
 from passlib import context
+import base64
 import jwt
 
 pwd_context = context.CryptContext(schemes=["bcrypt"], deprecated="auto")\
-
 
 def hashed_password(plain_password: str):
     return pwd_context.hash(plain_password)
@@ -26,32 +24,17 @@ def verify_hashed_url(db_url: str, user_url: str) -> bool:
     except Exception as e:
         print(f"Error decoding token: {str(e)}")
         return False
-
-# def verify_hashed_url(db_url: str, user_url: str):
-#     try:
-#         decoded_hashed = base64.urlsafe_b64decode(user_url).decode("utf-8")
-#         return pwd_context.verify(db_url, decoded_hashed)
-#     except Exception as e:
-#         print(f"Error decoding token: {str(e)}")
-#         return {"error": str(e)}
-
+ 
 def create_access_token(payload: dict):
     token_expiry = datetime.now(timezone.utc) + timedelta(minutes= float(TOKEN_EXPIRY) )
     to_encode = {"exp": token_expiry, "sub": payload} 
     return jwt.encode(to_encode, SECRET_TOKEN, TOKEN_ALGROITHM)
 
-# def decode_access_token(token):
-#     try:
-#         return jwt.decode(token, SECRET_TOKEN, algorithms=[TOKEN_ALGROITHM])
-#     except jwt.exceptions.ExpiredSignatureError as e:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-#     except jwt.exceptions.InvalidTokenError as e:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-#     except jwt.exceptions.PyJWTError as e:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-#     except Exception as e:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-     
+def create_refresh_token(payload: dict):
+    token_expiry = datetime.now(timezone.utc) + timedelta(days=float(REFRESH_TOKEN_EXPIRY) )
+    to_encode = {"exp": token_expiry, "sub": payload} 
+    return jwt.encode(to_encode, SECRET_TOKEN, TOKEN_ALGROITHM)
+
 def decode_access_token(token: str):
     """
     Decodes a JWT access token.
@@ -80,3 +63,4 @@ def decode_access_token(token: str):
     except Exception as e:
         # Any other exception
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+

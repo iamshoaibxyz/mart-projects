@@ -4,6 +4,9 @@ import os
 
 _ = load_dotenv(find_dotenv())
 
-DATABASE_URL=os.environ.get("DATABASE_URL","postgresql://shoaib:mypassword@postgresContainer:5432/mydatabase")
+INVENTORY_DATABASE_URL=os.environ.get("INVENTORY_DATABASE_URL")
 # TEST_DATABASE_URL=os.environ.get("TEST_DATABASE_URL","")
-ORDER_BACKEND_HOST = os.environ.get("ORDER_BACKEND_HOST","http://127.0.0.1:8006")
+INVENTORY_BACKEND_HOST = os.environ.get("INVENTORY_BACKEND_HOST")
+SECRET_TOKEN = os.environ.get("SECRET_TOKEN")
+TOKEN_ALGROITHM = os.environ.get("TOKEN_ALGROITHM")
+

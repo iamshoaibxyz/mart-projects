@@ -1,13 +1,11 @@
 from datetime import datetime, timedelta, timezone
-from app.config.settings import SECRET_TOKEN, TOKEN_EXPIRY, TOKEN_ALGROITHM
+from app.config.settings import SECRET_TOKEN, TOKEN_EXPIRY, TOKEN_ALGROITHM, REFRESH_TOKEN_EXPIRY
 from passlib import context
 from fastapi import HTTPException, status 
 import base64
 import jwt
 
-
 pwd_context = context.CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hashed_password(plain_password: str):
     return pwd_context.hash(plain_password)
@@ -19,6 +17,18 @@ def hashed_url(url: str) -> str:
     hashed_password = pwd_context.hash(url)
     return base64.urlsafe_b64encode(hashed_password.encode("utf-8")).decode("utf-8")
 
+# def add_padding(base64_str: str) -> str:
+#     return base64_str + '=' * (-len(base64_str) % 4)
+
+# def verify_hashed_url(db_url: str, user_url: str) -> bool:
+#     try:
+#         user_url_padded = add_padding(user_url)
+#         decoded_hashed = base64.urlsafe_b64decode(user_url_padded).decode("utf-8")
+#         return pwd_context.verify(db_url, decoded_hashed)
+#     except Exception as e:
+#         print(f"Error decoding token: {str(e)}")
+#         return False
+
 def verify_hashed_url(db_url: str, user_url: str) -> bool:
     try:
         decoded_hashed = base64.urlsafe_b64decode(user_url).decode("utf-8")
@@ -29,6 +39,11 @@ def verify_hashed_url(db_url: str, user_url: str) -> bool:
 
 def create_access_token(payload: dict):
     token_expiry = datetime.now(timezone.utc) + timedelta(minutes= float(TOKEN_EXPIRY) )
+    to_encode = {"exp": token_expiry, "sub": payload} 
+    return jwt.encode(to_encode, SECRET_TOKEN, TOKEN_ALGROITHM)
+
+def create_refresh_token(payload: dict):
+    token_expiry = datetime.now(timezone.utc) + timedelta(days=float(REFRESH_TOKEN_EXPIRY) )
     to_encode = {"exp": token_expiry, "sub": payload} 
     return jwt.encode(to_encode, SECRET_TOKEN, TOKEN_ALGROITHM)
 

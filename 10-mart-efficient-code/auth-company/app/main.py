@@ -8,7 +8,7 @@ app : FastAPI = FastAPI(lifespan=lifespan,servers=[{"url":"http://127.0.0.1:8002
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8004",],  # Or specify the domain of your Swagger UI
+    allow_origins=["*",],  # Or specify the domain of your Swagger UI
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

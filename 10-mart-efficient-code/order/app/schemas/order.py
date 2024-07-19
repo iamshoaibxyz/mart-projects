@@ -10,3 +10,5 @@ class UserRes(BaseModel):
     password: str
     email: str
     
+class MultiOrderReq(BaseModel):
+    orders: list[OrderReq]
