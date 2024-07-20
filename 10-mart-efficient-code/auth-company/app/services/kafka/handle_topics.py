@@ -47,7 +47,7 @@ async def company_token(proto_company_token):
         session.add(company)
         session.commit()
  
-async def verify_reset_password_company(proto_company):
+async def verify_reset_password_company(proto_company): 
     company_model = proto_to_company(proto_company)
     async with get_session() as session:
         company: CompanyModel = session.get(CompanyModel, company_model.id)
@@ -56,6 +56,8 @@ async def verify_reset_password_company(proto_company):
         session.add(company)
         session.commit()
         session.refresh(company)
+    async with get_producer() as producer:
+        await producer.send_and_wait("email-company-password-updated", proto_company.SerializeToString())
  
 async def update_company(proto_company):
     company_model = proto_to_company(proto_company)

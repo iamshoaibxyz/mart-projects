@@ -12,7 +12,7 @@ class ProductAddReq(BaseModel):
     name: str
     description: Optional[str] = None
     category: str
-    price: float
+    price: float 
 
 class ProductUpdateReq(BaseModel):
     name: Optional[str] = None

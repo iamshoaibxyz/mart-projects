@@ -116,27 +116,27 @@ async def get_all_users(session: Annotated[Session, Depends(get_session)]): #, p
     users = session.exec(select(UserModel)).all()
     return users
 
-@router.post("/get_user_by_id", response_model=UserBasicInfoRes)
-async def get_all_users(data: GetUserByIdReq, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
-    user = session.exec(select(UserModel).where(UserModel.id==UUID(data.id))).first()
+@router.get("/get_user_by_id/{user_id}", response_model=UserBasicInfoRes)
+async def get_all_users(user_id: UUID, session: Annotated[Session, Depends(get_session)]): #, producer: Annotated[AIOKafkaProducer, Depends(get_producer)]
+    user = session.exec(select(UserModel).where(UserModel.id==user_id)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user not Found")    
     return user
 
-@router.post("/get-user-by-email", response_model=UserBasicInfoRes)
-async def user_by_email(data: GetUserByEmailReq, session: Annotated[Session, Depends(get_session)]):
-    user = session.exec(select(UserModel).where(UserModel.email==data.email.lower())).first()
+@router.get("/get-user-by-email/{email}", response_model=UserBasicInfoRes)
+async def user_by_email(email: EmailStr, session: Annotated[Session, Depends(get_session)]):
+    user = session.exec(select(UserModel).where(UserModel.email==email.lower())).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"user not Found")    
     return user
 
 @router.get("/user-token")
-async def about_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def about_token_data(token: Annotated[str, Depends(oauth2_scheme)]):
     user_data = decode_access_token(token)
     return user_data
 
 @router.get("/user-profile")
-async def about_user(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
+async def about_current_user(token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[Session, Depends(get_session)]):
     try:
         user_data = decode_access_token(token)
         id = user_data.get("sub").get("id")

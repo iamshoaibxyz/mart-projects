@@ -8,12 +8,18 @@ app : FastAPI = FastAPI(title="Basic Mart", servers=[{
     "description": "Development server"
 }])
 
-app.include_router(router)
+ 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["127.0.0.1:8007",],  # Or specify the domain of your Swagger UI
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/")
 def root():
     return {"message": "order soursecode"}
 
-@app.get("/me")
-def root():
-    return {"message": "Hey i am shoaib"}
+app.include_router(router)

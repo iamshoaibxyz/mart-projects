@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlmodel import SQLModel, select, Session
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timezone
@@ -18,25 +18,24 @@ oauth2_company_scheme = OAuth2PasswordBearer(tokenUrl="http://127.0.0.1:8002/com
 router = APIRouter(prefix="/inventory", tags=["Inventory"], responses={404:{"description": "Not found"}})
 
 @router.post("/add-inventory")
-async def add_inventory(product_data: InventoryAddReq, token: Annotated[dict, Depends(oauth2_company_scheme)]):
+async def add_inventory(product_id: UUID, quantity: Annotated[int, Query(ge=1, lt=100)], token: Annotated[dict, Depends(oauth2_company_scheme)]):
     company = await auth_checker(token=token)
-    product = await fetch_product_detail_by_id(product_data.product_id, company.get("id"))
-    # return {"company": company, "product": product}
-    inventory_proto = customs_pb2.InventoryInfo(company_id=str(company.get("id")), product_id=str(product.get("id")), stock=int(product_data.quantity) )
+    product = await fetch_product_detail_by_id(str(product_id), company.get("id"))
+    inventory_proto = customs_pb2.InventoryInfo(company_id=str(company.get("id")), product_id=str(product.get("id")), stock=quantity )
     async with get_producer() as producer:
         await producer.send_and_wait("inventory-added", inventory_proto.SerializeToString())
     return {"message": "Stock added successfully"} 
 
 @router.post("/subtract-inventory")
-async def subtract_inventory(product_data: InventoryAddReq, session: Annotated[Session, Depends(get_session)], token: Annotated[dict, Depends(oauth2_company_scheme)]):
+async def subtract_inventory(product_id: UUID, quantity: Annotated[int, Query(ge=1, lt=50)], session: Annotated[Session, Depends(get_session)], token: Annotated[dict, Depends(oauth2_company_scheme)]):
     company = await auth_checker(token=token)
-    product = await fetch_product_detail_by_id(product_data.product_id)
-    stock = session.exec(select(StockLevel).where(StockLevel.product_id==UUID(product_data.product_id))).first()
+    product = await fetch_product_detail_by_id(str(product_id), company.get("id"))
+    stock = session.exec(select(StockLevel).where(StockLevel.product_id==product_id)).first()
     if not stock:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="stock not found")
-    if stock.current_stock < product_data.quantity:
+    if stock.current_stock < quantity:
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail=f"Insufficient stock, we have just '{stock.current_stock}' item of {product.get("name")} by {company.get("name")} company/shop")
-    inventory_proto = customs_pb2.InventoryInfo(company_id=str(company.get("id")), product_id=str(product.get("id")), stock=int(product_data.quantity) )
+    inventory_proto = customs_pb2.InventoryInfo(company_id=str(company.get("id")), product_id=str(product.get("id")), stock=quantity )
     async with get_producer() as producer:
         await producer.send_and_wait("inventory-subtracted", inventory_proto.SerializeToString())
     return {"message": "Stock subtracted successfully"} 
@@ -57,25 +56,31 @@ async def transactions_by_product_id(product_id: str ,session: Annotated[Session
     if not transactions:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"product's transactions not found")
     return transactions
- 
 
+@router.get("/get-all-transactions-by-stock-id/{stock_id}", response_model=list[InventoryTransactionSchema])
+async def transactions_by_stock_id(stock_id: UUID ,session: Annotated[Session, Depends(get_session)]):
+    transactions = session.exec(select(InventoryTransaction).where(InventoryTransaction.stock_id==stock_id)).all()
+    if not transactions:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"product's transactions not found")
+    return transactions
+ 
 @router.get("/get-transaction-by-id/{transaction_id}", response_model=InventoryTransactionSchema)
-async def transaction_by__id(transaction_id: str ,session: Annotated[Session, Depends(get_session)]):
-    transactions = session.exec(select(InventoryTransaction).where(InventoryTransaction.id==UUID(transaction_id))).first()
+async def transaction_by_id(transaction_id: UUID ,session: Annotated[Session, Depends(get_session)]):
+    transactions = session.exec(select(InventoryTransaction).where(InventoryTransaction.id==transaction_id)).first()
     if not transactions:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"transactions not found")
     return transactions
  
 @router.get("/get-stock-by-product-id/{product_id}", response_model=StockLevelSchema)
-async def stocks_by_product_id(product_id: str ,session: Annotated[Session, Depends(get_session)]):
-    stock = session.exec(select(StockLevel).where(StockLevel.product_id==UUID(product_id))).first()
+async def stocks_by_product_id(product_id: UUID ,session: Annotated[Session, Depends(get_session)]):
+    stock = session.exec(select(StockLevel).where(StockLevel.product_id==product_id)).first()
     if not stock:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"product's stock not found")
     return stock
 
 @router.get("/get-stock-by-id/{stock_id}", response_model=StockLevelSchema)
-async def stocks_by_id(stock_id: str ,session: Annotated[Session, Depends(get_session)]):
-    stock = session.exec(select(StockLevel).where(StockLevel.id==UUID(stock_id))).first()
+async def stocks_by_id(stock_id: UUID ,session: Annotated[Session, Depends(get_session)]):
+    stock = session.exec(select(StockLevel).where(StockLevel.id==stock_id)).first()
     if not stock:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"stock not found")
     return stock

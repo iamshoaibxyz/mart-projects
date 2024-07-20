@@ -166,16 +166,16 @@ async def company_by_id(id: str, session: Annotated[Session, Depends(get_session
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
     return company
 
-@router.post("/get-company-by-email/{email}", response_model=CompanyBasicInfoRes)
-async def company_by_email(data: getCompanyByEmailReq, session: Annotated[Session, Depends(get_session)]):
-    company = session.exec(select(CompanyModel).where(CompanyModel.email==data.email.lower())).first()
+@router.get("/get-company-by-email/{company_email}", response_model=CompanyBasicInfoRes)
+async def company_by_email(company_email: EmailStr, session: Annotated[Session, Depends(get_session)]):
+    company = session.exec(select(CompanyModel).where(CompanyModel.email==company_email.lower())).first()
     if not company:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
     return company
 
-@router.post("/get-company-by-name/{name}", response_model=CompanyBasicInfoRes)
-async def company_by_name(data: getCompanyByNameReq, session: Annotated[Session, Depends(get_session)]):
-    company = session.exec(select(CompanyModel).where(CompanyModel.name==data.name.lower())).first()
+@router.get("/get-company-by-name/{company_name}", response_model=CompanyBasicInfoRes)
+async def company_by_name(company_name: str, session: Annotated[Session, Depends(get_session)]):
+    company = session.exec(select(CompanyModel).where(CompanyModel.name==company_name.lower())).first()
     if not company:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"company not Found")    
     return company

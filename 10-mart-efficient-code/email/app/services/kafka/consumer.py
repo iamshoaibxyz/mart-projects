@@ -7,12 +7,13 @@ from app.services.kafka.handle_topics import (
     email_to_company_transaction_added,
     email_to_company_transaction_subtracted,
     
-    email_to_new_company ,
+    email_to_new_company,
     verification_email_to_new_company, 
     email_to_unverified_company, 
     email_to_updated_company ,
     email_to_reset_password_company, 
     email_to_deleted_company,
+    email_to_company_password_updated,
     
     email_to_new_user, 
     email_to_unverified_user, 
@@ -22,6 +23,7 @@ from app.services.kafka.handle_topics import (
     email_to_deleted_user, 
 
     email_to_new_product_company, 
+    email_to_updated_product_company ,
     # email_to_updated_product_company
     # email_to_new_product_with_transaction ,
 )
@@ -62,6 +64,11 @@ async def kafka_consumer(topic: str):
                 company_proto = company_pb2.Company()
                 company_proto.ParseFromString(message.value)
                 await email_to_updated_company(company_proto)
+
+            elif topic == "email-company-password-updated":
+                company_proto = company_pb2.Company()
+                company_proto.ParseFromString(message.value)
+                await email_to_company_password_updated(company_proto)
 
             elif topic == "email-company-deleted":
                 company_proto = company_pb2.Company()
@@ -110,10 +117,10 @@ async def kafka_consumer(topic: str):
                 await email_to_new_product_company(product_proto)
 
 
-            # elif topic == "product-email-product-updated":
-            #     product_proto = user_pb2.Product()
-            #     product_proto.ParseFromString(message.value)
-            #     await email_to_updated_product_company(product_proto)
+            elif topic == "email-product-updated":
+                product_proto = product_pb2.Product()
+                product_proto.ParseFromString(message.value)
+                await email_to_updated_product_company(product_proto)
 
             elif topic == "email-transaction-added":
                 transaction_proto = inventory_pb2.InventoryTransaction()

@@ -1,10 +1,12 @@
 from sqlmodel import create_engine, Session, SQLModel
-from app.config.settings import DATABASE_URL
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from sqlalchemy import text
+import asyncio
 
-connection_str = str(DATABASE_URL).replace("postgresql", "postgresql+psycopg")
+from app.services.kafka.consumer import kafka_consumer
+from app.config.settings import ORDER_DATABASE_URL
+
+connection_str = str(ORDER_DATABASE_URL).replace("postgresql", "postgresql+psycopg")
 
 engine = create_engine(connection_str)
 
@@ -15,6 +17,8 @@ async def get_session():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("table creating")
-    SQLModel.metadata.create_all(engine)
+    SQLModel.metadata.create_all(engine) # order_added
+    asyncio.create_task(kafka_consumer(""))
+    
     print("table created")
     yield

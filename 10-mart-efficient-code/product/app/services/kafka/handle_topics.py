@@ -37,20 +37,20 @@ async def update_product(product_proto):
         session.commit() 
         session.refresh(product)
     async with get_producer() as producer:
-        await producer.send_and_wait("product-email-product-updated", product_proto.SerializeToString())
+        await producer.send_and_wait("email-product-updated", product_proto.SerializeToString())
 
 async def add_new_product_with_inventory(product_proto):
     product = ProductModel(name=product_proto.name, description=product_proto.description, price=float(product_proto.price), category=product_proto.category, company_id=UUID(product_proto.company_id))
     product_info = product.model_copy()
     async with get_session() as session:
         session.add(product) 
-        session.commit() 
+        session.commit()  
         session.refresh(product)
 
     async with get_producer() as producer:
         await producer.send_and_wait("hello", b"product added")
-        proto_inventory_info = customs_pb2.InventoryInfo(company_id=str(product_info.company_id), product_id=str(product_info.id), stock=product_proto.stock)
-        await producer.send_and_wait("product-inventory-stock-added", proto_inventory_info.SerializeToString())
+        proto_inventory_info = customs_pb2.InventoryInfo(company_id=str(product_info.company_id), product_id=str(product_info.id), stock=int(product_proto.stock))
+        await producer.send_and_wait("inventory-new-stock-added", proto_inventory_info.SerializeToString())
         
 
 

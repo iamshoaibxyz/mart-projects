@@ -1,16 +1,9 @@
-from passlib import context
-from app.config.settings import TOKEN_ALGROITHM, SECRET_TOKEN
-import jwt
 from fastapi import HTTPException, status
+from passlib import context
+import jwt
+from app.config.settings import TOKEN_ALGROITHM, SECRET_TOKEN
 
-pwd_contex = context.CryptContext(schemes=["bcrypt"], deprecated="auto")\
-
-
-def hashedPassword(plain_password: str):
-    return pwd_contex.hash(plain_password)
-
-def verify_hashed_password(plain_password: str, hashed_password: str):
-    return pwd_contex.verify(plain_password, hashed_password)
+pwd_contex = context.CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def decode_access_token(token: str):
     """

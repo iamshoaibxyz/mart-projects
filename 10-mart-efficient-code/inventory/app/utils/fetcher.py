@@ -20,22 +20,10 @@ async def fetch_details_by_get_method(url: str):
         except httpx.HTTPStatusError as exc:
             raise HTTPException(status_code=exc.response.status_code, detail=f"HTTP error: {exc.response.text}")
 
-async def fetch_details_by_post_method(url: str, data):
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url=url, json=data, headers={'Content-Type': 'application/json'})
-            response.raise_for_status()  # This will raise an error for HTTP codes 4xx/5xx
-            company = response.json()
-            return company
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Request error: {exc}")
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=f"HTTP error: {exc.response.text}")
-
 async def fetch_product_detail_by_id(product_id: str, company_id: str):
     try:
         data = {"product_id": product_id,"company_id": company_id }
-        product = await fetch_details_by_post_method(f"{PRODUCT_SERVICE_URL}/product/get-product-by-product-and-company-id", data)
+        product = await fetch_details_by_get_method(f"{PRODUCT_SERVICE_URL}/product/get-product-by-product-and-company-id?company_id={company_id}&product_id={product_id}", )
         if not product:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
         return product

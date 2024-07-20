@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import HTTPException
 from aiokafka import AIOKafkaConsumer
-from app.schemas.protos import product_pb2 as pb
+from app.schemas.protos import product_pb2 as pb, customs_pb2 as cpb
 from app.services.kafka.handle_topics import add_new_product, add_new_product_with_inventory, update_product
 
 @asynccontextmanager
@@ -22,15 +22,20 @@ async def kafka_consumer(topic: str):
                 product_proto.ParseFromString(message.value)
                 await add_new_product(product_proto)
          
+            if topic == "product_updated":
+                product_proto = pb.Product()
+                product_proto.ParseFromString(message.value)
+                await update_product(product_proto)
+         
             # elif topic == "product_product_product_updated":
             #     product_proto = all_proto_pb2.Product()
             #     product_proto.ParseFromString(message.value)
             #     await update_product(product_proto)
          
-            # elif topic == "product-product-product-and-inventory-added":
-            #     product_proto = customs_pb2.ProductWithInventory()
-            #     product_proto.ParseFromString(message.value)
-            #     await add_new_product_with_inventory(product_proto)
+            elif topic == "product-and-inventory-added":
+                product_proto = cpb.ProductWithInventory()
+                product_proto.ParseFromString(message.value)
+                await add_new_product_with_inventory(product_proto)
 
 
             # elif topic == "product-product-product-and-inventory-added":

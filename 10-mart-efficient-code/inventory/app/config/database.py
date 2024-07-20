@@ -19,5 +19,6 @@ async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine) 
     asyncio.create_task(kafka_consumer("inventory-added"))
     asyncio.create_task(kafka_consumer("inventory-subtracted"))
+    asyncio.create_task(kafka_consumer("inventory-new-stock-added"))
     print("table created")
     yield

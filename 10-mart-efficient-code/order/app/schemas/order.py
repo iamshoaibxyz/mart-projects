@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-
+from uuid import UUID
 class OrderReq(BaseModel):
-    product_id: str
+    product_id: UUID
     quantity: int
 
 class UserRes(BaseModel):

@@ -123,6 +123,17 @@ async def email_to_reset_password_company(company_proto):
 """
     await send_mail(email=email, html=html, subject="Reset Password")
 
+async def email_to_company_password_updated(company_proto):
+    company = proto_to_company_model(company_proto)
+    email = company.email
+    html = f"""
+            Email: '{email.lower()}' <br/>
+            Name: '{company.name.lower()}' <br/>
+            Conpany password successfully updated ...
+"""
+    await send_mail(email=email, html=html, subject="Password updated")
+
+
 async def email_to_updated_company(company_proto):
     company = proto_to_company_model(company_proto)
     email = company.email
@@ -149,7 +160,7 @@ async def email_to_deleted_company(company_proto):
 
 async def email_to_new_product_company(product_proto):
     product = proto_to_product_model(product_proto)
-    company = await fetch_company_details_by_id(str(product.company_id)) 
+    company = await fetch_company_detail_by_id(str(product.company_id)) 
     email = company.get("email")
     name = company.get("name")
     html = f"""
@@ -173,11 +184,11 @@ async def email_to_company_transaction_subtracted(transaction_proto):
     html = f"""
             Email: '{email}' <br/>
             Product: '{product.get("name")}' <br/>
-            Description: '{product.description}' <br/>
+            Description: '{product.get("description")}' <br/>
             stock subtract: '{transaction.quantity}' <br/>
             current stock: '{stock.get("current_stock")}' <br/>
             Congratulation stock subtracted of '{product.get("name").capitalize()}' product, by '{name.capitalize()}'"""
-    await send_mail(email=email, html=html, subject="Product added")
+    await send_mail(email=email, html=html, subject="Product subtracted")
 
 async def email_to_company_transaction_added(transaction_proto):
     transaction = proto_to_inventory_transaction(transaction_proto)
@@ -189,13 +200,26 @@ async def email_to_company_transaction_added(transaction_proto):
     html = f"""
             Email: '{email}' <br/>
             Product: '{product.get("name")}' <br/>
-            Description: '{product.description}' <br/>
+            Description: '{product.get("description")}' <br/>
             stock added: '{transaction.quantity}' <br/>
             current stock: '{stock.get("current_stock")}' <br/>
             Congratulation stock add of '{product.get("name").capitalize()}' product, by '{name.capitalize()}'"""
     await send_mail(email=email, html=html, subject="Product added")
 
 
+async def email_to_updated_product_company(product_proto):
+    product = proto_to_product_model(product_proto)
+    company = await fetch_company_detail_by_id(str(product.company_id))
+    # stock = await fetch_stock_detail_by_id(str(transaction.stock_id))
+    email = company.get("email")
+    name = company.get("name")
+    html = f"""
+            email: '{email}' <br/>
+            product name: '{product.name}' <br/>
+            product description: '{product.description}' <br/>
+            product price: '{product.price}' <br/>
+            product '{product.name.capitalize()}' is successfully updated by '{name.capitalize()}'  Company."""
+    await send_mail(email=email, html=html, subject="Product updated")
 
 
 
@@ -207,23 +231,15 @@ async def email_to_company_transaction_added(transaction_proto):
 
 
 
+# url = f"{BACKEND_HOST}/auth/account-verify?token={token}&email={user.email}"
+#     context = {
+#         "url": url,
+#         "username":f"{user.first_name} {user.last_name}",
+#         "application":"RaiBott"
+#     }
+#     subject = "This is only for user verification"
 
-
-
-
-
-# async def email_to_updated_product_company(product_proto):
-#     product = proto_to_product(product_proto)
-#     async with get_session() as session: 
-#         company: CompanyModel = session.get(CompanyModel, product.company_id)
-#         email = company.email
-#         stock = session.exec(select(StockLevel).where(StockLevel.product_id==product.id)).first()
-#         stock_content = (stock.current_stock if stock else "please add stock related detaild")
-#         html = f"""
-#                 email: '{email}'
-#                 Congratulation product '{product.name.capitalize()}' is successfully updated by '{company.name.capitalize()}'  Company <br/> Product name: '{product.name.capitalize()}' <br/> Product Category: '{product.category.lower()}' <br/> Product price: '{product.price}' <br/> Current stock: {stock_content}  """
-#         await send_mail(email=email, html=html)
-
+#     await send_mail(email=[user.email], subject=subject, template_name="users/accountverification.html", context=context)
 
 # async def email_to_new_product_with_transaction(transaction_proto):
 #     # transaction = proto_to_inventory_transaction(inventory_proto)
