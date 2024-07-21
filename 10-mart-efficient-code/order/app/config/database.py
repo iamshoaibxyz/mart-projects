@@ -18,7 +18,8 @@ async def get_session():
 async def lifespan(app: FastAPI):
     print("table creating")
     SQLModel.metadata.create_all(engine) # order_added
-    asyncio.create_task(kafka_consumer(""))
+    asyncio.create_task(kafka_consumer("order_added"))
+    asyncio.create_task(kafka_consumer("orders_added"))
     
     print("table created")
     yield

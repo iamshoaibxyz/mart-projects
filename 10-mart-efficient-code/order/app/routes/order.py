@@ -1,46 +1,97 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import select, Session
-from typing import Annotated
+from typing import Annotated, List
 from uuid import UUID
 
 from app.models.order import OrderPlacedModel, CartModel, OrderStatus
-from app.schemas.order import OrderReq, MultiOrderReq
+from app.schemas.order import OrderReq, MultiOrderReq, ProductOrder
 from app.schemas.protos import order_pb2
-from app.utils.proto_conversion import order_to_proto
+from app.utils.proto_conversion import order_to_proto, orders_to_proto
 from app.config.database import get_session
 from app.services.kafka.producer import get_producer
-from app.utils.fetcher import auth_checker, fetch_product_detail_by_id, fetch_stock_detail_by_product_id
+from app.utils.fetcher import auth_checker, fetch_product_detail_by_id_2, fetch_stock_detail_by_product_id_2
 
 oauth2_user_scheme = OAuth2PasswordBearer(tokenUrl="http://127.0.0.1:8001/user/user-login")
 
 router = APIRouter(prefix="/order", tags=["Order"], responses={404:{"description": "Not found"}})
-# order_data: OrderReq
-@router.post("/order-place")
-async def order_place(product_id: UUID, quantity: Annotated[int, Query(..., ge=1, lt=99)], session: Annotated[Session, Depends(get_session)], token: Annotated[dict, Depends(oauth2_user_scheme)]):
+
+# @router.post("/single-order-place")
+# async def order_place(product_id: UUID, quantity: Annotated[int, Query(..., ge=1, lt=99)], token: Annotated[dict, Depends(oauth2_user_scheme)]):
+#     user = await auth_checker(token=token)
+#     product = await fetch_product_detail_by_id(str(product_id))
+#     stock = await fetch_stock_detail_by_product_id(str(product_id))
+#     if int(stock.get("current_stock")) < quantity:
+#         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="Insufficient stock")
+#     order = OrderPlacedModel(
+#         cart_id=UUID(user.get("id")),
+#         user_id=UUID(user.get("id")),
+#         product_id=UUID(product.get("id")),
+#         product_price=float(product.get("price")),
+#         total_price=float(product.get("price")) * quantity,
+#         quantity=quantity,
+#         status="initialized" # OrderStatus
+#     )
+#     order_proto = order_to_proto(order)
+#     async with get_producer() as producer:
+#         await producer.send_and_wait("order_added", order_proto.SerializeToString())
+#     return { "message": "order successfuly added", "user": user, "product": product, "stock": stock, "order": order}
+
+
+@router.post("/multiple-order-place")
+async def multiple_order_place(orders: List[ProductOrder], token: Annotated[str, Depends(oauth2_user_scheme)]):
     user = await auth_checker(token=token)
-    product = await fetch_product_detail_by_id(str(product_id))
-    stock = await fetch_stock_detail_by_product_id(str(product_id))
-    if int(stock.get("current_stock")) < quantity:
-        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="Insufficient stock")
-    order = OrderPlacedModel(
-        cart_id=UUID(user.get("id")),
-        user_id=UUID(user.get("id")),
-        product_id=UUID(product.get("id")),
-        product_price=float(product.get("price")),
-        total_price=float(product.get("price")) * quantity,
-        quantity=quantity,
-        status="initialized" # OrderStatus
-    )
-    order_proto = order_to_proto(order)
+    all_orders = []
+    errors = []
+
+    for order in orders:
+        product = await fetch_product_detail_by_id_2(str(order.product_id))
+        stock = await fetch_stock_detail_by_product_id_2(str(order.product_id))
+        
+        if not product:
+            errors.append(f"Product with ID {order.product_id} not found")
+            continue
+        
+        if not stock or int(stock.get("current_stock", 0)) < order.quantity:
+            errors.append(f"Insufficient stock for product {product.get('name')}")
+            continue
+
+        new_order = OrderPlacedModel(
+            cart_id=UUID(user.get("id")),
+            user_id=UUID(user.get("id")),
+            product_id=UUID(product.get("id")),
+            product_price=float(product.get("price")),
+            total_price=float(product.get("price")) * order.quantity,
+            quantity=order.quantity,
+            status="initialized"  # OrderStatus
+        )
+        all_orders.append(new_order)
+
+    if not all_orders:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail={"errors": errors})
+
     async with get_producer() as producer:
-        await producer.send_and_wait("order_added", order_proto.SerializeToString())
-    return { "message": "order successfuly added", "user": user, "product": product, "stock": stock, "order": order}
+        order_list_proto = orders_to_proto(all_orders)
+        await producer.send_and_wait("orders_added", order_list_proto.SerializeToString())
+    # async with get_producer() as producer:
+    #     for order in all_orders:
+    #         order_proto = order_to_proto(order)
+    #         await producer.send_and_wait("order_added", order_proto.SerializeToString())
+
+    return {"message": "Orders placed successfully", "errors": errors, "orders": [order.dict() for order in all_orders]}
 
 
 
+@router.get("/get-all-orders")
+async def all_orders(session: Annotated[Session, Depends(get_session)], ):
+    orders = session.exec(select(OrderPlacedModel)).all()
+    return orders
 
 
+@router.get("/get-all-carts")
+async def all_carts(session: Annotated[Session, Depends(get_session)], ):
+    carts = session.exec(select(CartModel)).all()
+    return carts
 
 
 

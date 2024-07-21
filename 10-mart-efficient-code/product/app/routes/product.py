@@ -111,7 +111,7 @@ async def product_by_id(product_id: Annotated[UUID, Path(..., description="The I
     """
     product = session.exec(select(ProductModel).where(ProductModel.id == product_id)).first()
     if not product:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     return product
 
 @router.get("/get-products-by-company-id/{company_id}", response_model=list[ProductModelSchema], description="Retrieve all products of a company by the company's ID")

@@ -75,7 +75,7 @@ async def transaction_by_id(transaction_id: UUID ,session: Annotated[Session, De
 async def stocks_by_product_id(product_id: UUID ,session: Annotated[Session, Depends(get_session)]):
     stock = session.exec(select(StockLevel).where(StockLevel.product_id==product_id)).first()
     if not stock:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"product's stock not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"product's stock not found")
     return stock
 
 @router.get("/get-stock-by-id/{stock_id}", response_model=StockLevelSchema)

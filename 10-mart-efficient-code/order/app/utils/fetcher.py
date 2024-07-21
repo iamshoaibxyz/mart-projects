@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 import httpx
+from typing import Optional
 
 from app.config.security import decode_access_token
 
@@ -56,6 +57,32 @@ async def fetch_company_detail_by_id(company_id: str):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
+async def fetch_details_by_get_method_2(url: str) -> Optional[dict]:
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url=url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Request error: {exc}")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                return None
+            raise HTTPException(status_code=exc.response.status_code, detail=f"HTTP error: {exc.response.text}")
+
+async def fetch_product_detail_by_id_2(product_id: str) -> Optional[dict]:
+    try:
+        return await fetch_details_by_get_method_2(f"{PRODUCT_SERVICE_URL}/product/get-product-by-id/{product_id}")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"something went wrong: {e}")
+
+async def fetch_stock_detail_by_product_id_2(product_id: str) -> Optional[dict]:
+    try:
+        return await fetch_details_by_get_method_2(f"{INVENTORY_SERVICE_URL}/inventory/get-stock-by-product-id/{product_id}")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"something went wrong: {e}")
+
+
 async def auth_checker(token: str):
     try:
         decoded_token = decode_access_token(token)
@@ -66,6 +93,7 @@ async def auth_checker(token: str):
         return user
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
 
 
 # async def fetch_company_product_detail_by_id(product_id: str, company_id: str):

@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from aiokafka import AIOKafkaConsumer
 from app.schemas.protos import order_pb2
-# from app.services.kafka.handle_topics import  subtract_inventory_stock, add_inventory_stock
+from app.services.kafka.handle_topics import add_order, add_orders # subtract_inventory_stock, add_inventory_stock
 
 @asynccontextmanager
 async def get_consumer(topic: str):
@@ -21,10 +21,15 @@ async def kafka_consumer(topic: str):
         async for message in consumer:
          
             if topic == "order_added":
-                pass
-                # inventory_proto = customs_pb2.InventoryInfo()
-                # inventory_proto.ParseFromString(message.value)
-                # await add_inventory_stock(inventory_proto)
+                order_proto = order_pb2.OrderPlaced()
+                order_proto.ParseFromString(message.value)
+                await add_order(order_proto)
+         
+         
+            if topic == "orders_added":
+                orders_proto = order_pb2.OrderPlacedList()
+                orders_proto.ParseFromString(message.value)
+                await add_orders(orders_proto)
          
          
             # elif topic == "inventory-subtracted":

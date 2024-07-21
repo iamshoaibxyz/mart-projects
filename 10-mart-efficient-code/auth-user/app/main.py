@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config.database import lifespan
 from app.routes.user import router as user_router
 
-app : FastAPI = FastAPI(lifespan=lifespan,servers=[{"url":"http://127.0.0.1:8001"}])
+app : FastAPI = FastAPI(lifespan=lifespan, title="user", servers=[{"url":"http://127.0.0.1:8001"}])
 
 app.add_middleware(
     CORSMiddleware,
